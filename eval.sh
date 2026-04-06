@@ -1,11 +1,12 @@
 #!/bin/bash
-# Immutable evaluation script for IMC Prosperity 3 autoresearch
-# Tests strategy archetypes across their natural rounds + stress tests
+# Immutable evaluation script for IMC Prosperity autoresearch
+# Tests strategy archetypes across P3 AND P2 — the trader must handle both
 # DO NOT MODIFY during experiments
 
 set -uo pipefail
 
 TRADER_FILE="trader.py"
+P2_SUBMISSIONS="/home/researcher/prosperity/imc-prosperity-2/src/submissions"
 TIMEOUT_SEC=90
 
 echo "=== Eval Start ==="
@@ -13,108 +14,160 @@ echo "timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 echo "commit: $COMMIT"
 
-# Create temp dir for per-round outputs
-TMPDIR=$(mktemp -d)
-trap "rm -rf $TMPDIR" EXIT
-
-CRASH=0
+P3_CRASH=0
+P2_CRASH=0
 
 ###############################################################################
-# ARCHETYPE 1: Market Making (Round 1 — RESIN, KELP, SQUID_INK only)
+# P3 EVALUATION
 ###############################################################################
+
 echo ""
-echo "=== Archetype: Market Making (Round 1) ==="
+echo "========== PROSPERITY 3 =========="
+
+# P3 Archetype 1: Market Making (Round 1)
+echo ""
+echo "=== P3 Market Making (Round 1) ==="
 R1_OUT=$(timeout $TIMEOUT_SEC prosperity3bt "$TRADER_FILE" 1 --no-out --merge-pnl --no-progress 2>&1) || true
-echo "$R1_OUT" | tail -8
-R1_PROFIT=$(echo "$R1_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
-if [ -z "$R1_PROFIT" ]; then
-    echo "mm_profit: CRASH"
-    R1_PROFIT=0
-    CRASH=1
+echo "$R1_OUT" | tail -6
+P3_MM=$(echo "$R1_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
+if [ -z "$P3_MM" ]; then
+    echo "p3_mm_profit: CRASH"
+    P3_MM=0
+    P3_CRASH=$((P3_CRASH + 1))
 else
-    echo "mm_profit: $R1_PROFIT"
+    echo "p3_mm_profit: $P3_MM"
 fi
 
-###############################################################################
-# ARCHETYPE 2: Stat Arb (Round 2 — baskets + components added)
-###############################################################################
+# P3 Archetype 2: Stat Arb (Round 2)
 echo ""
-echo "=== Archetype: Stat Arb (Round 2) ==="
+echo "=== P3 Stat Arb (Round 2) ==="
 R2_OUT=$(timeout $TIMEOUT_SEC prosperity3bt "$TRADER_FILE" 2 --no-out --merge-pnl --no-progress 2>&1) || true
-echo "$R2_OUT" | tail -12
-
-# Extract basket-related profits (CROISSANTS, JAMS, DJEMBES, PB1, PB2)
-# We need the final-day per-product breakdown
-R2_PROFIT=$(echo "$R2_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
-if [ -z "$R2_PROFIT" ]; then
-    echo "statarb_profit: CRASH"
-    R2_PROFIT=0
-    CRASH=1
+echo "$R2_OUT" | tail -10
+P3_STATARB=$(echo "$R2_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
+if [ -z "$P3_STATARB" ]; then
+    echo "p3_statarb_profit: CRASH"
+    P3_STATARB=0
+    P3_CRASH=$((P3_CRASH + 1))
 else
-    # Subtract MM products to isolate basket contribution
-    # (R2 includes RESIN/KELP/SQUID too)
-    echo "statarb_total_profit: $R2_PROFIT"
+    echo "p3_statarb_profit: $P3_STATARB"
 fi
 
-###############################################################################
-# ARCHETYPE 3: Options (Round 3 — volcanic rock + vouchers added)
-###############################################################################
+# P3 Archetype 3: Options (Round 3)
 echo ""
-echo "=== Archetype: Options (Round 3) ==="
+echo "=== P3 Options (Round 3) ==="
 R3_OUT=$(timeout $TIMEOUT_SEC prosperity3bt "$TRADER_FILE" 3 --no-out --merge-pnl --no-progress 2>&1) || true
-echo "$R3_OUT" | tail -20
-R3_PROFIT=$(echo "$R3_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
-if [ -z "$R3_PROFIT" ]; then
-    echo "options_profit: CRASH"
-    R3_PROFIT=0
-    CRASH=1
+echo "$R3_OUT" | tail -18
+P3_OPTIONS=$(echo "$R3_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
+if [ -z "$P3_OPTIONS" ]; then
+    echo "p3_options_profit: CRASH"
+    P3_OPTIONS=0
+    P3_CRASH=$((P3_CRASH + 1))
 else
-    echo "options_total_profit: $R3_PROFIT"
+    echo "p3_options_profit: $P3_OPTIONS"
 fi
 
-###############################################################################
-# ARCHETYPE 4+5: Conversion Arb + Insider (Round 5 — all products, revealed IDs)
-###############################################################################
+# P3 Full (Round 5)
 echo ""
-echo "=== Archetype: Full (Round 5 — conversion + insider + all) ==="
+echo "=== P3 Full (Round 5) ==="
 R5_OUT=$(timeout $TIMEOUT_SEC prosperity3bt "$TRADER_FILE" 5 --no-out --merge-pnl --no-progress 2>&1) || true
 echo "$R5_OUT" | tail -20
-R5_PROFIT=$(echo "$R5_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
-if [ -z "$R5_PROFIT" ]; then
-    echo "full_profit: CRASH"
-    R5_PROFIT=0
-    CRASH=1
+P3_FULL=$(echo "$R5_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
+if [ -z "$P3_FULL" ]; then
+    echo "p3_full_profit: CRASH"
+    P3_FULL=0
+    P3_CRASH=$((P3_CRASH + 1))
 else
-    echo "full_profit: $R5_PROFIT"
+    echo "p3_full_profit: $P3_FULL"
+fi
+
+# P3 Stress (Round 5, worse fills)
+echo ""
+echo "=== P3 Stress (Round 5 worse fills) ==="
+R5W_OUT=$(timeout $TIMEOUT_SEC prosperity3bt "$TRADER_FILE" 5 --no-out --merge-pnl --no-progress --match-trades worse 2>&1) || true
+echo "$R5W_OUT" | tail -6
+P3_STRESS=$(echo "$R5W_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
+if [ -z "$P3_STRESS" ]; then
+    echo "p3_stress_profit: CRASH"
+    P3_STRESS=0
+else
+    echo "p3_stress_profit: $P3_STRESS"
 fi
 
 ###############################################################################
-# STRESS TEST: Round 5 with --match-trades worse (adversarial fills)
+# P2 EVALUATION — same trader.py must work on different product names
+# Uses P2 datamodel (copied alongside trader.py as datamodel.py)
+# The trader must detect products at runtime and apply correct archetype
 ###############################################################################
+
 echo ""
-echo "=== Stress: Round 5 worse fills ==="
-R5W_OUT=$(timeout $TIMEOUT_SEC prosperity3bt "$TRADER_FILE" 5 --no-out --merge-pnl --no-progress --match-trades worse 2>&1) || true
-echo "$R5W_OUT" | tail -8
-R5W_PROFIT=$(echo "$R5W_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
-if [ -z "$R5W_PROFIT" ]; then
-    echo "stress_profit: CRASH"
-    R5W_PROFIT=0
-    CRASH=1
+echo "========== PROSPERITY 2 =========="
+
+# Copy trader.py to P2 submissions dir temporarily (needs P2 datamodel)
+P2_TMPDIR=$(mktemp -d)
+cp "$TRADER_FILE" "$P2_TMPDIR/trader.py"
+cp /home/researcher/prosperity/imc-prosperity-2/src/algorithms/datamodel.py "$P2_TMPDIR/datamodel.py"
+
+# P2 Market Making (Round 1: AMETHYSTS + STARFRUIT)
+echo ""
+echo "=== P2 Market Making (Round 1) ==="
+P2R1_OUT=$(timeout $TIMEOUT_SEC prosperity2bt "$P2_TMPDIR/trader.py" 1 --no-out --merge-pnl --no-progress 2>&1) || true
+echo "$P2R1_OUT" | tail -6
+P2_MM=$(echo "$P2R1_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
+if [ -z "$P2_MM" ]; then
+    echo "p2_mm_profit: CRASH"
+    P2_MM=0
+    P2_CRASH=$((P2_CRASH + 1))
 else
-    echo "stress_profit: $R5W_PROFIT"
+    echo "p2_mm_profit: $P2_MM"
 fi
+
+# P2 Basket + Signal (Round 3: GIFT_BASKET, CHOCOLATE, STRAWBERRIES, ROSES)
+echo ""
+echo "=== P2 Basket/Signal (Round 3) ==="
+P2R3_OUT=$(timeout $TIMEOUT_SEC prosperity2bt "$P2_TMPDIR/trader.py" 3 --no-out --merge-pnl --no-progress 2>&1) || true
+echo "$P2R3_OUT" | tail -10
+P2_BASKET=$(echo "$P2R3_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
+if [ -z "$P2_BASKET" ]; then
+    echo "p2_basket_profit: CRASH"
+    P2_BASKET=0
+    P2_CRASH=$((P2_CRASH + 1))
+else
+    echo "p2_basket_profit: $P2_BASKET"
+fi
+
+# P2 Options (Round 4: COCONUT + COCONUT_COUPON)
+echo ""
+echo "=== P2 Options (Round 4) ==="
+P2R4_OUT=$(timeout $TIMEOUT_SEC prosperity2bt "$P2_TMPDIR/trader.py" 4 --no-out --merge-pnl --no-progress 2>&1) || true
+echo "$P2R4_OUT" | tail -10
+P2_OPTIONS=$(echo "$P2R4_OUT" | grep "^Total profit:" | tail -1 | sed 's/Total profit: //; s/,//g')
+if [ -z "$P2_OPTIONS" ]; then
+    echo "p2_options_profit: CRASH"
+    P2_OPTIONS=0
+    P2_CRASH=$((P2_CRASH + 1))
+else
+    echo "p2_options_profit: $P2_OPTIONS"
+fi
+
+# Cleanup
+rm -rf "$P2_TMPDIR"
 
 ###############################################################################
 # COMPOSITE SCORE
 ###############################################################################
 echo ""
-echo "=== Per-Archetype Scores ==="
-echo "mm_profit: $R1_PROFIT"
-echo "statarb_profit: $R2_PROFIT"
-echo "options_profit: $R3_PROFIT"
-echo "full_profit: $R5_PROFIT"
-echo "stress_profit: $R5W_PROFIT"
-echo "crash_count: $CRASH"
+echo "========== SUMMARY =========="
+echo "p3_mm_profit: $P3_MM"
+echo "p3_statarb_profit: $P3_STATARB"
+echo "p3_options_profit: $P3_OPTIONS"
+echo "p3_full_profit: $P3_FULL"
+echo "p3_stress_profit: $P3_STRESS"
+echo "p3_crashes: $P3_CRASH"
+echo "p2_mm_profit: $P2_MM"
+echo "p2_basket_profit: $P2_BASKET"
+echo "p2_options_profit: $P2_OPTIONS"
+echo "p2_crashes: $P2_CRASH"
 
-# Compute composite score via Python
-python3 compute_score.py "$R1_PROFIT" "$R2_PROFIT" "$R3_PROFIT" "$R5_PROFIT" "$R5W_PROFIT" "$CRASH"
+python3 compute_score.py \
+    "$P3_MM" "$P3_STATARB" "$P3_OPTIONS" "$P3_FULL" "$P3_STRESS" "$P3_CRASH" \
+    "$P2_MM" "$P2_BASKET" "$P2_OPTIONS" "$P2_CRASH"

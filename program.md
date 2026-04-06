@@ -1,126 +1,159 @@
-# IMC Prosperity 3→4 Strategy Autoresearch
+# IMC Prosperity Autoresearch — P3+P2 Cross-Competition Training
 
-**Goal**: Build and master 5 transferable strategy archetypes that will work in IMC Prosperity 4. We optimize on P3 data but the real deliverable is UNDERSTANDING — documented in `insights.md`.
+**Goal**: Build strategy archetypes that work on BOTH IMC Prosperity 2 AND Prosperity 3 — proving they'll transfer to Prosperity 4. The same `trader.py` must handle both competitions without knowing which one it's in.
 
-**Why P3 matters for P4**: The products change names but the archetypes are ALWAYS the same:
-- Round 1: Fixed-fair-value + mean-reverting + noisy/volatile → **Market Making**
-- Round 2: ETF basket + constituents → **Statistical Arbitrage**
-- Round 3: Options on underlying → **Volatility Trading**
-- Round 4: Cross-exchange with conversion costs → **Conversion Arbitrage**
-- Round 5: Trader IDs revealed, insider present → **Insider Following**
+**The test**: eval.sh runs your trader on P3 rounds 1/2/3/5 AND P2 rounds 1/3/4. If it only profits on P3, it's overfit to P3 product names. If it profits on both, the archetypes are truly general.
 
-**Metric**: `composite_score` from eval.sh — tests each archetype in its natural round, plus stress test with adversarial fills. NOT just round 5 total profit.
+## The Archetype Map
+
+Products change names every year. The archetypes never change:
+
+| Archetype | P2 Products | P3 Products | P4 Products |
+|-----------|-------------|-------------|-------------|
+| **MM (fixed)** | AMETHYSTS (10,000) | RAINFOREST_RESIN (10,000) | ??? |
+| **MM (dynamic)** | STARFRUIT | KELP | ??? |
+| **MM (volatile)** | — | SQUID_INK | ??? |
+| **Basket arb** | GIFT_BASKET = 4C+6S+1R | PB1 = 6CR+3J+1D | ??? |
+| **Basket components** | CHOCOLATE, STRAWBERRIES, ROSES | CROISSANTS, JAMS, DJEMBES | ??? |
+| **Options** | COCONUT_COUPON (K=10000 on COCONUT) | VOLCANIC_ROCK_VOUCHER_* | ??? |
+| **Conversion** | ORCHIDS (sunlight, humidity) | MACARONS (sunlightIndex, sugarPrice) | ??? |
+| **Insider** | Vladimir↔Remy, Rihanna↔Vinnie | Olivia | ??? |
+
+**Your trader must detect archetypes at runtime from `state.order_depths` product names and market behavior.** It cannot hardcode P3-specific or P2-specific product names as the only path.
 
 ## Setup
 
-1. Read `trader.py` completely. Understand every strategy, every constant, every product.
-2. Read `prepare.py`, `eval.sh`, `compute_score.py` to understand evaluation (NEVER modify them).
+1. Read `trader.py` completely.
+2. Read `eval.sh`, `compute_score.py` — understand the dual-competition scoring (NEVER modify).
 3. Read `datamodel.py` for the TradingState API.
-4. Study reference traders for ideas:
-   - `../imc-prosperity-3/FrankfurtHedgehogs_polished.py` — vol smile, ETF arb, commodity
-   - `../chrispyroberts-prosperity-3/ROUND5/OLIVIA IS THE GOAT.py` — our starting point
+4. Study reference traders for archetype implementations:
+   - P3: `../imc-prosperity-3/FrankfurtHedgehogs_polished.py`
+   - P2: `../imc-prosperity-2/src/submissions/round5.py` (9th place, by jmerle)
 5. Run `python3 prepare.py` to validate environment.
 6. Begin the experiment loop.
 
-## CRITICAL FIRST TASK: Make trader.py round-agnostic
+## Architecture: Product Detection
 
-The current trader.py CRASHES on rounds 1 and 2 because it tries to access products that don't exist in those rounds (e.g., `state.order_depths['PICNIC_BASKET2']` in round 1).
+The trader needs a detection layer that maps unknown product names to archetypes. Approaches:
 
-**Before any optimization, fix this.** Every product access must be guarded:
-- Check `if product in state.order_depths` before accessing
-- Wrap round-specific logic in try/except or product-existence checks
-- The trader must produce valid output on rounds 1, 2, 3, and 5
+### Option A: Name pattern matching (pragmatic)
+```python
+def classify_product(self, name, order_depth, state):
+    # Fixed-value MM: tight spread, stable mid near round number
+    # Options: name contains "VOUCHER", "COUPON", or a strike price
+    # Basket: name contains "BASKET", "GIFT"
+    # Conversion: has conversionObservations
+    # etc.
+```
 
-This is non-negotiable. A strategy that crashes in competition = 0 for that round.
+### Option B: Runtime behavior detection (general)
+```python
+def classify_product(self, name, price_history):
+    # Fixed-value: std(mid) < threshold, mid near round number
+    # Mean-reverting: autocorrelation < 0
+    # Volatile: std(mid) > threshold
+    # Options: price << underlying, always positive
+    # Basket: price ≈ weighted sum of other products
+```
 
-## The 5 Archetypes
+### Option C: Hybrid (recommended)
+Use name patterns as hints, verify with behavior. This is what you'd do on P4 day 1 — look at names for clues, then confirm from data.
 
-### Archetype 1: Market Making (tested on Round 1)
-**P3 products**: RAINFOREST_RESIN (fixed fair ~10000), KELP (mean-reverting), SQUID_INK (volatile)
-**P4 equivalent**: Will have different names but identical mechanics.
-**What to master**:
-- Fair value estimation (fixed vs dynamic)
-- Spread setting (tighter = more fills, wider = more profit/fill)
-- Inventory management (skew quotes when position is large)
-- When to take vs when to make
+**IMPORTANT**: The P2 and P3 datamodels have minor differences:
+- P2 ConversionObservation: `sunlight`, `humidity`
+- P3 ConversionObservation: `sunlightIndex`, `sugarPrice`
+- Your code must handle both (use `getattr` or try/except)
 
-**Current state in trader.py**:
-- RESIN: market making around 10000, works well (~35k/day)
-- KELP: MM with Olivia signal, ~5-7k/day
-- SQUID_INK: spike trading + MM, SQUID_LIMIT=15 but actual limit=50
+## CRITICAL FIRST TASK: Make trader.py work on both P2 and P3
 
-**Key insight to discover**: What's the optimal relationship between spread width, position size, and inventory skew? Document this in insights.md.
+Current state:
+- Crashes on P3 rounds 1 and 2 (accesses missing products)
+- Will crash on ALL P2 rounds (hardcoded P3 product names)
+- P2 scores: 0, 0, 0
 
-### Archetype 2: Statistical Arbitrage (tested on Round 2)
-**P3 products**: PICNIC_BASKET1 (6C+3J+1D), PICNIC_BASKET2 (4C+2J), components
-**P4 equivalent**: Always an ETF with known composition.
-**What to master**:
-- Z-score the spread between basket price and component fair value
-- Optimal hedge ratios
-- Entry/exit thresholds
-- Premium tracking (baskets typically trade at a premium to fair value)
+The trader must:
+1. **Guard all product accesses** — check `if product in state.order_depths`
+2. **Detect which products exist** and apply the right strategy
+3. **Handle unknown products gracefully** — at minimum, do basic market making on anything
 
-**Current state in trader.py**:
-- BASKET1_LIMIT=10 (actual: 60), BASKET2_LIMIT=10 (actual: 100)
-- Only simple MM + Olivia signals, NO actual basket arb
-- Crashes on Round 2 (accesses missing products)
+This is the #1 priority. Until this works, the composite score is crushed by crash penalties.
 
-**Key insight to discover**: What z-score threshold maximizes Sharpe? Is it better to trade basket vs components, or just market-make the basket? Document in insights.md.
+## The 5 Archetypes — What to Master
 
-### Archetype 3: Volatility Trading (tested on Round 3)
-**P3 products**: VOLCANIC_ROCK (underlying), 5 call options (strikes 9500-10500)
-**P4 equivalent**: Always options on some underlying. BS pricing.
-**What to master**:
-- Implied volatility estimation and smile fitting
-- Why unhedged works (Frankfurt Hedgehogs made 200k+/day unhedged)
+### Archetype 1: Market Making
+**The universal strategy.** Works on any product with a bid-ask spread.
+
+P3: RAINFOREST_RESIN (fixed ~10000), KELP (dynamic), SQUID_INK (volatile)
+P2: AMETHYSTS (fixed ~10000), STARFRUIT (dynamic)
+
+**What the agent must discover and document in insights.md:**
+- Optimal spread width as function of volatility
+- Inventory skew formula (how to adjust quotes based on position)
+- When to detect "fixed fair value" vs "mean-reverting" from runtime data
+- Edge from market making on AMETHYSTS vs STARFRUIT (P2 ref: ~16k/day each)
+
+**Current position limits in trader.py:**
+- SQUID_LIMIT=15 but actual limit=50 (70% capacity unused)
+
+### Archetype 2: Statistical Arbitrage (Basket/ETF)
+**Always the same structure:** basket = weighted sum of components.
+
+P3: PB1 = 6×CROISSANTS + 3×JAMS + 1×DJEMBES
+P2: GIFT_BASKET = 4×CHOCOLATE + 6×STRAWBERRIES + 1×ROSES
+
+**What the agent must discover:**
+- How to detect basket composition at runtime (ratio estimation)
+- Optimal z-score entry/exit thresholds
+- Premium tracking (baskets trade at premium to fair value)
+- P2 ref: GIFT_BASKET made 73k-183k/day with threshold-based trading
+
+**Current state:** BASKET1_LIMIT=10 (actual: 60), BASKET2_LIMIT=10 (actual: 100). No real arb logic.
+
+### Archetype 3: Options / Volatility Trading
+**Always Black-Scholes.** Call options on some underlying.
+
+P3: VOLCANIC_ROCK_VOUCHER_* (5 strikes, 9500-10500)
+P2: COCONUT_COUPON (1 strike, K=10000)
+
+**What the agent must discover:**
+- Why unhedged outperforms hedged (Frankfurt Hedgehogs made 200k+/day unhedged)
+- Vol smile fitting vs simple IV average
 - Which strikes are profitable and why
-- Market making around theoretical value
+- P2 ref: COCONUT_COUPON made 79-164k/day with BS fair value ± 2 threshold
 
-**Current state in trader.py**:
-- IV-based market making on all 5 vouchers
-- VOUCHER_10000 dominates (~150k/day), 9750 strong (~50k/day)
-- VOUCHER_10250 and 10500 LOSE money
-- Delta hedging exists but disabled (dont_hedge=True)
-- Window-average IV, no vol smile model
+**Current state:** Window-average IV, losing money on strikes 10250/10500, delta hedging disabled.
 
-**Key insight to discover**: Why does unhedged beat hedged? Is it because delta hedging has execution costs that exceed the variance reduction? What's the optimal vol smile model? Document in insights.md.
+### Archetype 4: Conversion Arbitrage
+**Cross-exchange with fees.** Always has hidden mechanics in the fee structure.
 
-### Archetype 4: Conversion Arbitrage (tested on Round 4/5)
-**P3 products**: MAGNIFICENT_MACARONS (cross-exchange, fees, tariffs, sunlight, sugar)
-**P4 equivalent**: Always a cross-exchange product with conversion costs and hidden fee mechanics.
-**What to master**:
-- Fee structure exploitation
-- When to convert vs when to trade locally
-- Hidden mechanics in the observation data
+P3: MAGNIFICENT_MACARONS (sunlightIndex, sugarPrice, tariffs)
+P2: ORCHIDS (sunlight, humidity, tariffs)
 
-**Current state in trader.py**:
-- trade_macaroni() EXISTS but is COMMENTED OUT (line ~1315)
-- Currently 0 profit from this entire archetype
-- The function sells locally then converts position back, with break-even pricing
+**What the agent must discover:**
+- Fee structure exploitation patterns
+- When conversion is profitable
+- What the environmental observations predict
+- P2 ref: Orchids strategy existed but made ~0 in later rounds
 
-**Key insight to discover**: What's the actual profitable edge? Is it sell local + convert back, or buy local + convert away? What role do sunlight/sugar observations play? Document in insights.md.
+**Current state:** MACARONS strategy exists but is COMMENTED OUT.
 
-### Archetype 5: Insider Following (tested on Round 5)
-**P3 products**: All — Olivia is the insider
-**P4 equivalent**: ALWAYS has an insider. "Find them. Copy them. Go to max position."
-**What to master**:
-- Signal detection (who trades consistently in the right direction?)
-- Speed of response (how quickly to go max position after signal)
-- Which products the insider trades most profitably
-- Signal decay (how long does the edge last after detection?)
+### Archetype 5: Insider Following
+**"Find them. Copy them. Go to max position."**
 
-**Current state in trader.py**:
-- Olivia detection on SQUID_INK, KELP, CROISSANTS
-- Goes max position on croissants + baskets on signal
-- Goes max position on squid ink on signal
-- KELP signal tracked but NEVER ACTED ON
-- Signal-based basket trading makes ~20-30k/day
+P3: Olivia trades SQUID_INK, KELP, CROISSANTS
+P2: Vladimir↔Remy (CHOCOLATE), Rihanna↔Vinnie (ROSES)
 
-**Key insight to discover**: What's the optimal time to follow vs when has the signal decayed? Should you follow on ALL products or only the signaled one? Document in insights.md.
+**What the agent must discover:**
+- General signal detection: who trades consistently ahead of moves?
+- Speed of response after signal
+- Signal decay rate
+- Whether to follow on the signaled product only, or related products too
+
+**Current state:** Olivia detection works for P3. No P2 insider detection. KELP signal tracked but unused.
 
 ## Speed Rules
 
-Eval takes ~60 seconds (4 rounds + stress test). Overhead budget: **1 minute max**.
+Full eval takes ~70 seconds (P3 rounds + P2 rounds). Overhead budget: **1 minute max**.
 
 ## The Experiment Loop
 
@@ -128,142 +161,97 @@ LOOP FOREVER:
 
 ### 1. Decide what to try
 
-Focus on ONE ARCHETYPE per experiment. Use results.tsv to see which archetypes are weakest — improve the weakest link.
+Check which archetype is weakest across BOTH competitions. Fix the weakest link.
 
-**Escalation**: Distance from last keep → boldness of next experiment.
+Tag experiments by archetype: `git commit -am "exp: [mm] add P2 AMETHYSTS detection"`
 
-**Deduplication**: Check results.tsv. Don't retry failed experiments unless codebase has changed significantly.
+**Priority order:**
+1. Fix crashes (any crash = -100k in composite)
+2. Enable archetypes on P2 (currently all 0)
+3. Improve weakest archetype
+4. Document insights
 
 ### 2. Implement
 
-Modify ONLY `trader.py`.
+Modify ONLY `trader.py`. NEVER modify eval.sh, compute_score.py, prepare.py, datamodel.py.
 
-Do NOT modify `prepare.py`, `eval.sh`, `compute_score.py`, `datamodel.py`.
-
-### 3. Commit
-
-`git commit -am "exp: [archetype] <short description>"`
-
-Example: `git commit -am "exp: [options] remove losing strikes 10250+10500"`
-
-### 4. Evaluate
+### 3. Commit & Evaluate
 
 ```bash
+git commit -am "exp: [archetype] description"
 timeout 360 bash eval.sh > run.log 2>&1
 ```
 
-### 5. Extract results
+### 4. Extract results
 
 ```bash
 grep "composite_score:" run.log
 grep "_profit:" run.log
-grep "crash_count:" run.log
+grep "_crashes:" run.log
+grep "transfers:" run.log
 ```
 
-If crashes > 0, that's priority #1 to fix.
-
-Also examine per-archetype scores to understand WHERE the change had impact.
-
-### 6. Record
+### 5. Record
 
 Append to results.tsv (tab-separated):
 ```
-commit	composite_score	mm_profit	statarb_profit	options_profit	full_profit	stress_profit	crashes	status	description
+commit	composite_score	p3_mm	p3_statarb	p3_options	p3_full	p3_stress	p3_crashes	p2_mm	p2_basket	p2_options	p2_crashes	status	description
 ```
-Do NOT commit results.tsv to git.
 
-### 7. Keep or discard
+### 6. Keep or discard
 
-**Keep** (composite_score > current best AND crashes == 0):
-- Note the per-archetype changes
+**Keep** if composite_score improved AND total crashes didn't increase.
+**Discard** otherwise: `git reset --hard HEAD~1`
 
-**Discard** (composite_score <= current best OR crashes > 0):
-- `git reset --hard HEAD~1`
+Exception: if crashes decreased, keep even if score dropped slightly.
 
-Exception: if crashes decreased (e.g., 2→0) even if score dropped slightly, KEEP — stability is more important than marginal profit.
+### 7. Write Insights (after every KEEP)
 
-### 8. Write Insights
-
-After every KEEP, update `insights.md` with what you learned:
+Update `insights.md` with transferable principles:
 ```markdown
 ## [Archetype Name]
-
-### What works
-- <specific finding with evidence from results.tsv>
-
-### What doesn't work
-- <specific finding>
-
-### Open questions
-- <what to investigate next>
-
-### Transferable principle
-- <the general rule for P4, not P3-specific details>
+### What works on BOTH P2 and P3
+### What's P3-specific (won't transfer)
+### What's P2-specific (won't transfer)
+### Transferable principle for P4
 ```
 
-This is the REAL deliverable. The profit number is just validation.
+### 8. Reflect (every 10 experiments)
 
-### 9. Reflect (every 10 experiments)
-
-Run `python3 summarize_results.py` and review:
-- Which archetype is weakest? Focus there.
-- Which archetype is strongest? Document why in insights.md, then move on.
-- Are you spending too much time on one archetype?
-
-Go to step 1.
-
-## Structural Change Bias
-
-The biggest gains come from:
-- Making the trader round-agnostic (FIRST PRIORITY — eliminates crashes)
-- Enabling disabled archetypes (macarons = 0 profit)
-- Fixing position limits (baskets at 10 vs 60/100, squid at 15 vs 50)
-- Adding real basket arbitrage (currently missing entirely)
-- Fixing/removing losing option strikes
-
-**Rule: structural experiments should outnumber tuning experiments 2:1.**
-
-## Diversity Requirement
-
-Rotate through archetypes. Never spend more than 3 CONSECUTIVE experiments on the same archetype. The weakest archetype always gets priority.
+`python3 summarize_results.py` — check transfer score, crash rate, archetype balance.
 
 ## Research Directions
 
-### URGENT (crash fixes)
-1. **Make trader round-agnostic**: Guard all product accesses with `if product in state.order_depths`. The trader must not crash on ANY round.
+### URGENT: Cross-competition compatibility
+1. **Make trader round-agnostic**: Guard ALL product accesses. Must not crash on any round of either P2 or P3.
+2. **Add product detection layer**: Classify products into archetypes at runtime. Start simple (name matching), evolve to behavior-based.
+3. **Handle datamodel differences**: P2 has `humidity`, P3 has `sugarPrice`. Use try/except or getattr.
 
-### Starting Points (LOW HANGING FRUIT)
-2. **Enable MAGNIFICENT_MACARONS** (line ~1315): Uncomment `self.trade_macaroni(state)`. Currently 0 profit from this entire archetype.
+### Low-hanging fruit
+4. **Enable MACARONS** (line ~1315): Uncomment `self.trade_macaroni(state)`.
+5. **Increase position limits**: BASKET1_LIMIT 10→60, BASKET2_LIMIT 10→100, SQUID_LIMIT 15���50.
+6. **Remove losing P3 option strikes** (10250, 10500).
 
-3. **Increase position limits**: BASKET1_LIMIT 10→60, BASKET2_LIMIT 10→100, SQUID_LIMIT 15→50.
+### Archetype generalization
+7. **Generic MM**: single MM function that works on ANY product. Takes fair_value_estimate and spread_width as params.
+8. **Generic basket arb**: detect composition weights at runtime, trade spread when z-score exceeds threshold.
+9. **Generic options**: BS pricing that works with any strike/underlying pair.
+10. **Generic insider detection**: scan market_trades for trader names that correlate with subsequent price moves.
 
-4. **Remove losing option strikes** (10250, 10500): Stop bleeding money.
-
-### Archetype Deep Dives
-5. **Implement real basket arbitrage**: Calculate PB1 fair value = 6×CROISSANTS_mid + 3×JAMS_mid + 1×DJEMBES_mid. Trade when spread exceeds threshold. FrankfurtHedgehogs had this (with a bug on line 435).
-
-6. **Vol smile model for options**: FrankfurtHedgehogs used fitted coefficients `[0.27362531, 0.01007566, 0.14876677]` for IV as function of moneyness. Replace simple window average.
-
-7. **Test hedged vs unhedged options**: Enable delta hedging (line 688, `dont_hedge=True`), measure impact. Document WHY the winner wins in insights.md.
-
-8. **Act on Kelp Olivia signal**: `self.kelp_signal` is tracked but never used.
-
-9. **Macaron fee structure investigation**: Study the observation data (sunlight, sugar, tariffs). Is there a predictive signal?
-
-### Speculative
-10. **Inventory-skewed market making**: Shift quotes based on current position to manage risk.
-11. **Adaptive spread width**: Widen spreads in high-volatility regimes, tighten in calm markets.
-12. **Cross-archetype synergy**: Olivia signals on croissants should inform basket arb direction.
+### Deep investigations
+11. **Why unhedged options work**: test on both P2 (COCONUT_COUPON) and P3 (vouchers). Document the mechanism.
+12. **Basket premium dynamics**: compare P2 GIFT_BASKET premium to P3 PB1 premium. Same pattern?
+13. **Conversion fee patterns**: compare ORCHIDS fees to MACARONS fees. Hidden mechanics?
 
 ## Constraints
 
-- All order prices must be `int`. All quantities must be `int`.
-- Position limits are HARD — backtester cancels ALL orders if exceeded.
-- trader.py must have a `Trader` class with `run(self, state: TradingState)` returning `(orders, conversions, trader_data)`.
-- `numpy` and `math` available. No other external packages.
-- MAGNIFICENT_MACARONS conversion limit: 10 per timestamp.
-- **Trader must not crash on any round (1, 2, 3, 5)**. Crashes = -100,000 in composite score.
+- All order prices: `int`. All quantities: `int`.
+- Position limits are HARD (backtester cancels all orders if exceeded).
+- `Trader` class with `run(self, state: TradingState)` → `(orders, conversions, trader_data)`.
+- `numpy`, `math`, `statistics` available. No other packages.
+- Must work on both P2 and P3 datamodels.
+- **Crashes = -100,000 each in composite score.**
 
 ## NEVER STOP
 
-Run indefinitely. Rotate archetypes. Document insights. The goal is to walk into P4 with a playbook, not just a P3 score.
+Run indefinitely. Rotate archetypes. The goal: walk into P4 with a playbook that works on day 1 with zero code changes beyond product name detection.
