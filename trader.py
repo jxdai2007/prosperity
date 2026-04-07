@@ -227,9 +227,9 @@ class Trader:
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
 
-        # Take mispriced orders: buy below fair, sell above fair
+        # Take mispriced orders: buy BELOW fair, sell ABOVE fair (strict edge only)
         for ask_price in sorted(od.sell_orders.keys()):
-            if ask_price <= fair:
+            if ask_price < fair:
                 ask_vol = -od.sell_orders[ask_price]
                 can_buy = limit - pos
                 qty = min(ask_vol, can_buy)
@@ -238,7 +238,7 @@ class Trader:
                     pos += qty
 
         for bid_price in sorted(od.buy_orders.keys(), reverse=True):
-            if bid_price >= fair:
+            if bid_price > fair:
                 bid_vol = od.buy_orders[bid_price]
                 can_sell = limit + pos
                 qty = min(bid_vol, can_sell)
