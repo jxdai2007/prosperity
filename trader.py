@@ -183,7 +183,7 @@ class Trader:
         elif product in ("KELP", "STARFRUIT"):
             archetype = "dynamic"
         elif product in ("SQUID_INK",):
-            archetype = "dynamic"  # try with wider spread
+            archetype = "skip"  # too volatile, skip for now
         else:
             archetype = "skip"
 
@@ -277,7 +277,7 @@ class Trader:
         fair = ema
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
-        spread = 1 if product == "KELP" else (4 if product == "SQUID_INK" else MM_DYNAMIC_SPREAD)
+        spread = 1 if product == "KELP" else MM_DYNAMIC_SPREAD
 
         # Take mispriced orders
         for ask_price in sorted(od.sell_orders.keys()):
