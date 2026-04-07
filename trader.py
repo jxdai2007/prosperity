@@ -586,8 +586,10 @@ class Trader:
     # ----------------------------------------------------------
     # Insider Detection
     # ----------------------------------------------------------
-    # Known insiders from reference strategies
-    KNOWN_INSIDERS = {"Olivia", "Vladimir", "Remy", "Rhianna", "Rihanna", "Vinnie"}
+    # Known insiders: map to products they're reliable on
+    # P3: Olivia is reliable across products
+    # P2: Don't fast-follow P2 insiders — their signals work differently
+    KNOWN_INSIDERS = {"Olivia"}
 
     def detect_insider(self, state: TradingState, saved: dict) -> dict:
         signals = {}
