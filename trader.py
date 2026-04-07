@@ -342,6 +342,18 @@ class Trader:
         buy_qty = limit - pos
         sell_qty = limit + pos
 
+        if spread >= 2 and buy_qty > 1 and sell_qty > 1:
+            # Two levels: tight (half qty at spread-1) + wide (half at spread)
+            tight_bq = buy_qty // 2
+            tight_sq = sell_qty // 2
+            tight_buy = int(round(fair - (spread - 1) + skew))
+            tight_sell = int(round(fair + (spread - 1) + skew))
+            if tight_buy < tight_sell:
+                orders.append(Order(product, tight_buy, tight_bq))
+                orders.append(Order(product, tight_sell, -tight_sq))
+                buy_qty -= tight_bq
+                sell_qty -= tight_sq
+
         if buy_qty > 0:
             orders.append(Order(product, buy_price, buy_qty))
         if sell_qty > 0:
