@@ -471,6 +471,8 @@ class Trader:
 
         edge = option_mid - fair
         limit = self.get_limit(product)
+        if underlying != "COCONUT":
+            limit = min(limit, 100)  # cap P3 options position to reduce day 4 drawdown
         pos = self.get_position(product, state)
         od = state.order_depths[product]
 
