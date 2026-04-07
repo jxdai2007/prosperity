@@ -59,8 +59,8 @@ FIXED_FAIR_VALUES = {
 CONVERSION_PRODUCTS = {"MAGNIFICENT_MACARONS", "ORCHIDS"}
 
 # Strategy parameters (agent tunes these)
-MM_FIXED_SPREAD = 2          # half-spread for fixed-value market making
-MM_DYNAMIC_SPREAD = 2        # half-spread for dynamic market making
+MM_FIXED_SPREAD = 1          # half-spread for fixed-value market making
+MM_DYNAMIC_SPREAD = 1        # half-spread for dynamic market making
 MM_DYNAMIC_EMA_ALPHA = 0.3   # EMA smoothing for dynamic fair value
 BASKET_ENTRY_THRESHOLD = 50  # premium deviation to enter basket arb
 BASKET_EXIT_THRESHOLD = 10   # premium deviation to exit
@@ -454,7 +454,7 @@ class Trader:
         if edge > edge_thr:
             # Option overpriced, sell
             for bid_price in sorted(od.buy_orders.keys(), reverse=True):
-                if bid_price > fair + edge_thr * 0.5:
+                if bid_price > fair:
                     bid_vol = od.buy_orders[bid_price]
                     can_sell = limit + pos
                     qty = min(bid_vol, can_sell, max_take)
@@ -464,7 +464,7 @@ class Trader:
         elif edge < -edge_thr:
             # Option underpriced, buy
             for ask_price in sorted(od.sell_orders.keys()):
-                if ask_price < fair - edge_thr * 0.5:
+                if ask_price < fair:
                     ask_vol = -od.sell_orders[ask_price]
                     can_buy = limit - pos
                     qty = min(ask_vol, can_buy, max_take)
@@ -474,11 +474,11 @@ class Trader:
 
         # Market making around fair value
         if underlying == "COCONUT":
-            spread = max(3, int(fair * 0.01))
-            max_mm_qty = 15
+            spread = max(2, int(fair * 0.005))
+            max_mm_qty = 20
         else:
-            spread = max(2, int(fair * 0.02))
-            max_mm_qty = 20  # aggressive MM for P3 options (limit=200)
+            spread = max(1, int(fair * 0.005))
+            max_mm_qty = 30  # aggressive MM for P3 options (limit=200)
         buy_price = int(round(fair - spread))
         sell_price = int(round(fair + spread))
 
