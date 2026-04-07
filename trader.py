@@ -594,7 +594,7 @@ class Trader:
 
         # Market making around fair value
         if underlying == "COCONUT":
-            spread = max(3, int(fair * 0.01))
+            spread = max(4, int(fair * 0.012))
             max_mm_qty = 15
         else:
             # P3: strike-dependent spread — tighter for ATM, wider for OTM
