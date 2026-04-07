@@ -485,9 +485,8 @@ class Trader:
             vol_smile_iv = 0.17576677 + 0.01007566 * m_t_k + 0.18 * m_t_k * m_t_k
             vol_smile_iv = max(0.05, min(1.0, vol_smile_iv))
             fair = bs_call_price(S, strike, T, vol_smile_iv)
-            # Dynamic edge threshold: widen for low-vega options (Frankfurt approach)
-            vega = bs_vega(S, strike, T, vol_smile_iv)
-            edge_thr = 0.5 if vega > 1.0 else 0.8
+            # Edge threshold for P3 options
+            edge_thr = 0.5
 
         if fair <= 0.5:
             return orders
