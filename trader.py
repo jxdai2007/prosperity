@@ -442,7 +442,7 @@ class Trader:
         if underlying not in state.order_depths:
             return orders
 
-        S = get_wmid(state.order_depths[underlying])
+        S = get_mid(state.order_depths[underlying])
         if S <= 0:
             return orders
 
