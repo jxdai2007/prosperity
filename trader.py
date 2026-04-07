@@ -62,15 +62,8 @@ CONVERSION_PRODUCTS = {"MAGNIFICENT_MACARONS", "ORCHIDS"}
 MM_FIXED_SPREAD = 2          # half-spread for fixed-value market making
 MM_DYNAMIC_SPREAD = 2        # half-spread for dynamic market making
 MM_DYNAMIC_EMA_ALPHA = 0.3   # EMA smoothing for dynamic fair value
-BASKET_ENTRY_THRESHOLD = 50  # premium deviation to enter basket arb (default)
+BASKET_ENTRY_THRESHOLD = 50  # premium deviation to enter basket arb
 BASKET_EXIT_THRESHOLD = 10   # premium deviation to exit
-BASKET_THRESHOLDS = {
-    # P3 baskets: higher thresholds, wider structural premium variation
-    "PICNIC_BASKET1": {"entry": 60, "exit": 15},
-    "PICNIC_BASKET2": {"entry": 60, "exit": 15},
-    # P2 basket: historically stable premium, can be tighter
-    "GIFT_BASKET": {"entry": 40, "exit": 10},
-}
 OPTIONS_EDGE_THRESHOLD = 4.0 # min edge to trade options
 INSIDER_THRESHOLD = 0.55     # accuracy threshold to follow an insider
 INSIDER_MIN_TRADES = 5       # min trades before trusting insider score
@@ -355,10 +348,8 @@ class Trader:
         saved[skey] = ema_std
 
         deviation = premium - ema_prem
-        bt = BASKET_THRESHOLDS.get(basket, {})
-        base_entry = bt.get("entry", BASKET_ENTRY_THRESHOLD)
-        entry_thr = max(base_entry, ema_std * 0.8)
-        exit_thr = bt.get("exit", BASKET_EXIT_THRESHOLD)
+        entry_thr = max(BASKET_ENTRY_THRESHOLD, ema_std * 0.8)
+        exit_thr = BASKET_EXIT_THRESHOLD
 
         basket_limit = self.get_limit(basket)
         basket_pos = self.get_position(basket, state)
