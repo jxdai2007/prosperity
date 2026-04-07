@@ -280,7 +280,23 @@ class Trader:
         if mid == 0:
             return orders
 
-        # Update EMA
+        # Order Flow Imbalance: track bid/ask volume changes as directional signal
+        best_bid, bid_vol = get_best_bid(od)
+        best_ask, ask_vol = get_best_ask(od)
+        ask_vol = -ask_vol if ask_vol < 0 else ask_vol
+        ofi_key = f"ofi_{product}"
+        prev_bid_vol = saved.get(f"bv_{product}", bid_vol)
+        prev_ask_vol = saved.get(f"av_{product}", ask_vol)
+        saved[f"bv_{product}"] = bid_vol
+        saved[f"av_{product}"] = ask_vol
+        ofi = (bid_vol - prev_bid_vol) - (ask_vol - prev_ask_vol)
+        # EMA of OFI for smoothing
+        ofi_alpha = 0.3
+        prev_ofi = saved.get(ofi_key, 0)
+        ofi_ema = ofi_alpha * ofi + (1 - ofi_alpha) * prev_ofi
+        saved[ofi_key] = ofi_ema
+
+        # Update EMA with OFI adjustment
         alpha = MM_DYNAMIC_EMA_ALPHA
         key = f"ema_{product}"
         prev_ema = saved.get(key, mid)
@@ -288,7 +304,9 @@ class Trader:
         saved[key] = ema
         self.ema[product] = ema
 
-        fair = ema
+        # OFI adjusts fair value slightly: positive flow → price going up
+        ofi_adjustment = ofi_ema * 0.01  # small multiplier
+        fair = ema + ofi_adjustment
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
         spread = 1 if product == "KELP" else MM_DYNAMIC_SPREAD
