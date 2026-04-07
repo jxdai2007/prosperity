@@ -321,29 +321,7 @@ class Trader:
         fair = ema + ofi_adjustment
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
-
-        # Volatility-adaptive spread: track running variance of mid prices
-        vol_key = f"vol_var_{product}"
-        vol_n_key = f"vol_n_{product}"
-        vol_mean_key = f"vol_mean_{product}"
-        vol_n = saved.get(vol_n_key, 0) + 1
-        saved[vol_n_key] = vol_n
-        vol_prev_mean = saved.get(vol_mean_key, mid)
-        vol_delta = mid - vol_prev_mean
-        vol_new_mean = vol_prev_mean + vol_delta / vol_n
-        vol_delta2 = mid - vol_new_mean
-        vol_var = saved.get(vol_key, 0.0) + vol_delta * vol_delta2
-        saved[vol_key] = vol_var
-        saved[vol_mean_key] = vol_new_mean
-
-        if vol_n > 50:
-            std = math.sqrt(vol_var / (vol_n - 1))
-            # Scale spread: base=1 at low vol, up to 3 at high vol
-            # For KELP: typical std ~1-3, so spread = round(std)
-            # For STARFRUIT: typical std ~2-5, so spread = round(std)
-            spread = max(1, min(4, int(round(std))))
-        else:
-            spread = MM_DYNAMIC_SPREAD
+        spread = MM_DYNAMIC_SPREAD  # all dynamic products use spread=2 (dual-level handles tight)
 
         # Take mispriced orders
         for ask_price in sorted(od.sell_orders.keys()):
