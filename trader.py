@@ -293,9 +293,9 @@ class Trader:
         pos = self.get_position(product, state)
         spread = 1 if product == "KELP" else MM_DYNAMIC_SPREAD
 
-        # Take mispriced orders
+        # Take mispriced orders (take at any price better than fair)
         for ask_price in sorted(od.sell_orders.keys()):
-            if ask_price < fair - 0.5:
+            if ask_price < fair:
                 ask_vol = -od.sell_orders[ask_price]
                 can_buy = limit - pos
                 qty = min(ask_vol, can_buy)
@@ -304,7 +304,7 @@ class Trader:
                     pos += qty
 
         for bid_price in sorted(od.buy_orders.keys(), reverse=True):
-            if bid_price > fair + 0.5:
+            if bid_price > fair:
                 bid_vol = od.buy_orders[bid_price]
                 can_sell = limit + pos
                 qty = min(bid_vol, can_sell)
