@@ -262,7 +262,7 @@ class Trader:
         if mid == 0:
             return orders
 
-        # Update fast EMA
+        # Update EMA
         alpha = MM_DYNAMIC_EMA_ALPHA
         key = f"ema_{product}"
         prev_ema = saved.get(key, mid)
@@ -270,15 +270,7 @@ class Trader:
         saved[key] = ema
         self.ema[product] = ema
 
-        # Update slow EMA for trend detection
-        skey = f"sema_{product}"
-        prev_sema = saved.get(skey, mid)
-        sema = 0.03 * mid + 0.97 * prev_sema
-        saved[skey] = sema
-
-        # Trend bias: when fast EMA > slow EMA, bias toward buying
-        trend = ema - sema
-        fair = ema + trend * 0.1  # small trend adjustment
+        fair = ema
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
         spread = 1 if product == "KELP" else MM_DYNAMIC_SPREAD
