@@ -197,7 +197,7 @@ class Trader:
         elif product in ("KELP", "STARFRUIT"):
             archetype = "dynamic"
         elif product in ("SQUID_INK",):
-            archetype = "skip"  # too volatile, skip for now
+            archetype = "squid"  # toxic-order-filtered mean reversion
         else:
             archetype = "skip"
 
@@ -366,6 +366,86 @@ class Trader:
                 buy_qty -= tight_bq
                 sell_qty -= tight_sq
 
+        if buy_qty > 0:
+            orders.append(Order(product, buy_price, buy_qty))
+        if sell_qty > 0:
+            orders.append(Order(product, sell_price, -sell_qty))
+
+        return orders
+
+    # ----------------------------------------------------------
+    # Strategy: SQUID_INK Toxic-Order-Filtered Mean Reversion
+    # ----------------------------------------------------------
+    def squid_trade(self, product: str, state: TradingState, saved: dict) -> list:
+        orders = []
+        if product not in state.order_depths:
+            return orders
+
+        od = state.order_depths[product]
+        if not od.buy_orders or not od.sell_orders:
+            return orders
+
+        best_bid = max(od.buy_orders.keys())
+        best_ask = min(od.sell_orders.keys())
+
+        # Filter out toxic (small) orders — only use orders >= adverse_volume
+        adverse_volume = 18
+        filtered_bids = [p for p in od.buy_orders if abs(od.buy_orders[p]) >= adverse_volume]
+        filtered_asks = [p for p in od.sell_orders if abs(od.sell_orders[p]) >= adverse_volume]
+
+        if filtered_bids and filtered_asks:
+            mm_bid = max(filtered_bids)
+            mm_ask = min(filtered_asks)
+            mm_mid = (mm_bid + mm_ask) / 2.0
+        else:
+            mm_mid = (best_bid + best_ask) / 2.0
+
+        # Mean reversion: predict next price from last price change
+        last_key = f"squid_last_{product}"
+        last_price = saved.get(last_key, mm_mid)
+        saved[last_key] = mm_mid
+
+        reversion_beta = -0.17
+        if last_price > 0:
+            last_returns = (mm_mid - last_price) / last_price
+            pred_returns = last_returns * reversion_beta
+            fair = mm_mid + mm_mid * pred_returns
+        else:
+            fair = mm_mid
+
+        limit = self.get_limit(product)
+        pos = self.get_position(product, state)
+
+        # Take mispriced orders
+        for ask_price in sorted(od.sell_orders.keys()):
+            if ask_price < fair - 0.5:
+                ask_vol = -od.sell_orders[ask_price]
+                can_buy = limit - pos
+                qty = min(ask_vol, can_buy)
+                if qty > 0:
+                    orders.append(Order(product, ask_price, qty))
+                    pos += qty
+
+        for bid_price in sorted(od.buy_orders.keys(), reverse=True):
+            if bid_price > fair + 0.5:
+                bid_vol = od.buy_orders[bid_price]
+                can_sell = limit + pos
+                qty = min(bid_vol, can_sell)
+                if qty > 0:
+                    orders.append(Order(product, bid_price, -qty))
+                    pos -= qty
+
+        # Tight MM around fair with inventory skew
+        spread = 2
+        skew = -pos * 0.5 / limit * spread if limit > 0 else 0
+        buy_price = int(round(fair - spread + skew))
+        sell_price = int(round(fair + spread + skew))
+        if buy_price >= sell_price:
+            buy_price = int(fair) - 1
+            sell_price = int(fair) + 1
+
+        buy_qty = limit - pos
+        sell_qty = limit + pos
         if buy_qty > 0:
             orders.append(Order(product, buy_price, buy_qty))
         if sell_qty > 0:
@@ -888,6 +968,9 @@ class Trader:
                 elif archetype == "dynamic":
                     result[product] = self.mm_dynamic(product, state, saved)
 
+                elif archetype == "squid":
+                    result[product] = self.squid_trade(product, state, saved)
+
                 elif archetype == "basket":
                     basket_orders = self.basket_arb(product, state, saved)
                     for p, ords in basket_orders.items():
@@ -913,7 +996,7 @@ class Trader:
         for product, (direction, confidence) in insider_signals.items():
             if product in state.order_depths:
                 archetype = self.classify_product(product)
-                if archetype in ("dynamic", "component", "skip") and product not in INSIDER_EXCLUDE:
+                if archetype in ("dynamic", "component", "skip", "squid") and product not in INSIDER_EXCLUDE:
                     try:
                         insider_orders = self.apply_insider(product, direction, confidence, state)
                         if insider_orders:
