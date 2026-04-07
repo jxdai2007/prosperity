@@ -583,8 +583,11 @@ class Trader:
             spread = max(3, int(fair * 0.01))
             max_mm_qty = 15
         else:
-            # P3 options: MM with mean-edge-adjusted fair (accurate pricing)
-            spread = max(1, int(fair * 0.01))
+            # P3: strike-dependent spread — tighter for ATM, wider for OTM
+            delta = bs_delta(S, strike, T, vol_smile_iv)
+            liquidity = 4.0 * delta * (1.0 - delta)  # peaks at 1.0 for ATM, 0 for deep OTM
+            base_spread = max(1, int(fair * 0.01))
+            spread = max(1, int(base_spread * (2.0 - liquidity)))  # ATM: 1x, OTM: 2x
             max_mm_qty = 25
         # Position skew: shift MM prices to reduce inventory
         skew_factor = 0.9 if underlying != "COCONUT" else 0.5
