@@ -277,81 +277,43 @@ class Trader:
         fair = ema
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
+        spread = 1 if product == "KELP" else MM_DYNAMIC_SPREAD
 
-        best_bid_p, _ = get_best_bid(od)
-        best_ask_p, _ = get_best_ask(od)
+        # Take mispriced orders
+        for ask_price in sorted(od.sell_orders.keys()):
+            if ask_price < fair - 0.5:
+                ask_vol = -od.sell_orders[ask_price]
+                can_buy = limit - pos
+                qty = min(ask_vol, can_buy)
+                if qty > 0:
+                    orders.append(Order(product, ask_price, qty))
+                    pos += qty
 
-        if product == "KELP" and best_bid_p > 0 and best_ask_p > 0:
-            # Frankfurt approach: penny the book (bid_wall+1, ask_wall-1)
-            buy_price = best_bid_p + 1
-            sell_price = best_ask_p - 1
-            if buy_price >= sell_price:
-                buy_price = best_bid_p
-                sell_price = best_ask_p
+        for bid_price in sorted(od.buy_orders.keys(), reverse=True):
+            if bid_price > fair + 0.5:
+                bid_vol = od.buy_orders[bid_price]
+                can_sell = limit + pos
+                qty = min(bid_vol, can_sell)
+                if qty > 0:
+                    orders.append(Order(product, bid_price, -qty))
+                    pos -= qty
 
-            # Take mispriced orders
-            for ask_price in sorted(od.sell_orders.keys()):
-                if ask_price < fair - 0.5:
-                    ask_vol = -od.sell_orders[ask_price]
-                    can_buy = limit - pos
-                    qty = min(ask_vol, can_buy)
-                    if qty > 0:
-                        orders.append(Order(product, ask_price, qty))
-                        pos += qty
+        # Inventory skew (stronger to clear positions faster)
+        skew = -pos * 0.7 / limit * spread if limit > 0 else 0
+        buy_price = int(round(fair - spread + skew))
+        sell_price = int(round(fair + spread + skew))
 
-            for bid_price in sorted(od.buy_orders.keys(), reverse=True):
-                if bid_price > fair + 0.5:
-                    bid_vol = od.buy_orders[bid_price]
-                    can_sell = limit + pos
-                    qty = min(bid_vol, can_sell)
-                    if qty > 0:
-                        orders.append(Order(product, bid_price, -qty))
-                        pos -= qty
+        if buy_price >= sell_price:
+            buy_price = int(fair) - 1
+            sell_price = int(fair) + 1
 
-            buy_qty = limit - pos
-            sell_qty = limit + pos
-            if buy_qty > 0:
-                orders.append(Order(product, buy_price, buy_qty))
-            if sell_qty > 0:
-                orders.append(Order(product, sell_price, -sell_qty))
-        else:
-            # STARFRUIT and fallback: EMA-based with inventory skew
-            spread = MM_DYNAMIC_SPREAD
+        buy_qty = limit - pos
+        sell_qty = limit + pos
 
-            # Take mispriced orders
-            for ask_price in sorted(od.sell_orders.keys()):
-                if ask_price < fair - 0.5:
-                    ask_vol = -od.sell_orders[ask_price]
-                    can_buy = limit - pos
-                    qty = min(ask_vol, can_buy)
-                    if qty > 0:
-                        orders.append(Order(product, ask_price, qty))
-                        pos += qty
-
-            for bid_price in sorted(od.buy_orders.keys(), reverse=True):
-                if bid_price > fair + 0.5:
-                    bid_vol = od.buy_orders[bid_price]
-                    can_sell = limit + pos
-                    qty = min(bid_vol, can_sell)
-                    if qty > 0:
-                        orders.append(Order(product, bid_price, -qty))
-                        pos -= qty
-
-            skew = -pos * 0.7 / limit * spread if limit > 0 else 0
-            buy_price = int(round(fair - spread + skew))
-            sell_price = int(round(fair + spread + skew))
-
-            if buy_price >= sell_price:
-                buy_price = int(fair) - 1
-                sell_price = int(fair) + 1
-
-            buy_qty = limit - pos
-            sell_qty = limit + pos
-
-            if buy_qty > 0:
-                orders.append(Order(product, buy_price, buy_qty))
-            if sell_qty > 0:
-                orders.append(Order(product, sell_price, -sell_qty))
+        if buy_qty > 0:
+            orders.append(Order(product, buy_price, buy_qty))
+        if sell_qty > 0:
+            orders.append(Order(product, sell_price, -sell_qty))
 
         return orders
 
