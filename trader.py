@@ -339,7 +339,7 @@ class Trader:
         # Track premium EMA (slow, for mean)
         pkey = f"basket_prem_{basket}"
         prev_prem = saved.get(pkey, premium)
-        ema_prem = 0.05 * premium + 0.95 * prev_prem
+        ema_prem = 0.1 * premium + 0.9 * prev_prem
         saved[pkey] = ema_prem
 
         deviation = premium - ema_prem
