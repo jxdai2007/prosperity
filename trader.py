@@ -355,7 +355,7 @@ class Trader:
                 return all_orders
             comp_fair += weight * c_mid
 
-        basket_mid = get_mid(state.order_depths[basket])
+        basket_mid = get_wmid(state.order_depths[basket])
         if basket_mid == 0:
             return all_orders
 
