@@ -499,22 +499,19 @@ class Trader:
                         orders.append(Order(product, ask_price, qty))
                         pos += qty
 
-        # Market making around fair value
+        # Market making around fair value (only for COCONUT with wide spread)
         if underlying == "COCONUT":
             spread = max(3, int(fair * 0.01))
             max_mm_qty = 15
-        else:
-            # P3 options: wide spread MM to avoid adverse selection
-            spread = max(3, int(fair * 0.015))
-            max_mm_qty = 10
-        buy_price = int(round(fair - spread))
-        sell_price = int(round(fair + spread))
-        buy_qty = min(limit - pos, max_mm_qty)
-        sell_qty = min(limit + pos, max_mm_qty)
-        if buy_qty > 0 and buy_price > 0:
-            orders.append(Order(product, buy_price, buy_qty))
-        if sell_qty > 0 and sell_price > 0:
-            orders.append(Order(product, sell_price, -sell_qty))
+            buy_price = int(round(fair - spread))
+            sell_price = int(round(fair + spread))
+            buy_qty = min(limit - pos, max_mm_qty)
+            sell_qty = min(limit + pos, max_mm_qty)
+            if buy_qty > 0 and buy_price > 0:
+                orders.append(Order(product, buy_price, buy_qty))
+            if sell_qty > 0 and sell_price > 0:
+                orders.append(Order(product, sell_price, -sell_qty))
+        # P3 options: no MM resting orders, only take mispriced
 
         return orders
 
