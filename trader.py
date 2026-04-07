@@ -228,8 +228,11 @@ class Trader:
                     pos -= qty
 
         # Resting orders with inventory skew
-        buy_price = fair - MM_FIXED_SPREAD
-        sell_price = fair + MM_FIXED_SPREAD
+        # When long, lower both prices to encourage selling; when short, raise both
+        pos_frac = pos / limit if limit > 0 else 0
+        skew = -int(round(pos_frac * 1))  # ±1 based on position
+        buy_price = fair - MM_FIXED_SPREAD + skew
+        sell_price = fair + MM_FIXED_SPREAD + skew
 
         buy_qty = limit - pos
         sell_qty = limit + pos
