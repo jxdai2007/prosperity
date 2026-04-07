@@ -547,22 +547,29 @@ class Trader:
         ext_buy_cost = ext_ask + transport + import_tariff
         ext_sell_rev = ext_bid - transport - export_tariff
 
-        # Sell locally if price > external buy cost
-        best_bid, best_bid_vol = get_best_bid(od)
-        if best_bid > ext_buy_cost + 1:
-            can_sell = limit + pos
-            qty = min(best_bid_vol, can_sell, 10)
-            if qty > 0:
-                orders.append(Order(product, best_bid, -qty))
+        # Sell locally if price > external buy cost (import arb)
+        for bid_price in sorted(od.buy_orders.keys(), reverse=True):
+            if bid_price > ext_buy_cost + 1:
+                bid_vol = od.buy_orders[bid_price]
+                can_sell = limit + pos
+                qty = min(bid_vol, can_sell)
+                if qty > 0:
+                    orders.append(Order(product, bid_price, -qty))
+                    pos -= qty
+            else:
+                break
 
-        # Buy locally if price < external sell revenue
-        best_ask, best_ask_vol = get_best_ask(od)
-        if best_ask > 0 and best_ask < ext_sell_rev - 1:
-            can_buy = limit - pos
-            ask_vol = -best_ask_vol if best_ask_vol < 0 else best_ask_vol
-            qty = min(ask_vol, can_buy, 10)
-            if qty > 0:
-                orders.append(Order(product, best_ask, qty))
+        # Buy locally if price < external sell revenue (export arb)
+        for ask_price in sorted(od.sell_orders.keys()):
+            if ask_price < ext_sell_rev - 1:
+                ask_vol = -od.sell_orders[ask_price]
+                can_buy = limit - pos
+                qty = min(ask_vol, can_buy)
+                if qty > 0:
+                    orders.append(Order(product, ask_price, qty))
+                    pos += qty
+            else:
+                break
 
         # Convert position back toward zero
         new_pos = pos
