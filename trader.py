@@ -439,7 +439,7 @@ class Trader:
             # P3: use fitted vol smile (FrankfurtHedgehogs approach)
             # coeffs from fitted volatility smile: IV = f(log(K/S)/sqrt(T))
             m_t_k = math.log(strike / S) / math.sqrt(T) if T > 1e-8 else 0
-            vol_smile_iv = 0.15876677 + 0.01007566 * m_t_k + 0.27362531 * m_t_k * m_t_k
+            vol_smile_iv = 0.16876677 + 0.01007566 * m_t_k + 0.27362531 * m_t_k * m_t_k
             vol_smile_iv = max(0.05, min(1.0, vol_smile_iv))
             fair = bs_call_price(S, strike, T, vol_smile_iv)
             # Dynamic edge threshold: widen for low-vega options (Frankfurt approach)
