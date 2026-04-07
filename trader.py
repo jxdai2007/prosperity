@@ -459,7 +459,7 @@ class Trader:
         edge = option_mid - fair
         limit = self.get_limit(product)
         if underlying != "COCONUT":
-            limit = min(limit, 150)  # cap P3 options position
+            pass  # no cap needed with mean edge pricing
 
             # IV scalping: track running mean of edge deviation
             ekey = f"opt_edge_{product}"
