@@ -479,12 +479,8 @@ class Trader:
         od = state.order_depths[product]
 
         # Take mispriced orders aggressively
-        max_take = 1 if underlying == "COCONUT" else limit
-        # Position-aware edge: easier to reduce exposure, harder to increase
-        pos_frac = pos / limit if limit > 0 else 0
-        sell_thr = edge_thr * (1.0 - 0.5 * max(0, pos_frac))  # lower threshold when long (want to sell)
-        buy_thr = edge_thr * (1.0 - 0.5 * max(0, -pos_frac))  # lower threshold when short (want to buy)
-        if edge > sell_thr:
+        max_take = 1 if underlying == "COCONUT" else limit  # P3: go big, unhedged
+        if edge > edge_thr:
             # Option overpriced, sell
             for bid_price in sorted(od.buy_orders.keys(), reverse=True):
                 if bid_price > fair:
@@ -494,7 +490,7 @@ class Trader:
                     if qty > 0:
                         orders.append(Order(product, bid_price, -qty))
                         pos -= qty
-        elif edge < -buy_thr:
+        elif edge < -edge_thr:
             # Option underpriced, buy
             for ask_price in sorted(od.sell_orders.keys()):
                 if ask_price < fair:
