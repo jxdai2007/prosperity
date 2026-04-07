@@ -818,6 +818,19 @@ class Trader:
                     except Exception:
                         pass
 
+                    # Propagate component signals to their baskets
+                    if archetype == "component" and confidence >= 0.85:
+                        for bname, bcomp in BASKET_COMPOSITIONS.items():
+                            if product in bcomp and bname in state.order_depths:
+                                try:
+                                    basket_insider = self.apply_insider(bname, direction, confidence, state)
+                                    if basket_insider:
+                                        if bname not in result:
+                                            result[bname] = []
+                                        result[bname].extend(basket_insider)
+                                except Exception:
+                                    pass
+
         # Validate position limits
         for product in list(result.keys()):
             if not result[product]:
