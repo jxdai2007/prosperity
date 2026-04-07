@@ -67,7 +67,7 @@ BASKET_ENTRY_THRESHOLD = 35  # premium deviation to enter basket arb
 BASKET_EXIT_THRESHOLD = 10   # (unused - no exit logic)
 OPTIONS_EDGE_THRESHOLD = 4.0 # min edge to trade options
 INSIDER_THRESHOLD = 0.55     # accuracy threshold to follow an insider
-INSIDER_MIN_TRADES = 5       # min trades before trusting insider score
+INSIDER_MIN_TRADES = 7       # min trades before trusting insider score
 INSIDER_WINDOW = 50          # rolling window for insider scoring
 CONVERSION_MAX = 10          # max conversion per tick
 
