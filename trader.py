@@ -958,7 +958,7 @@ class Trader:
                         mkt_spread = lo_mid - hi_mid
 
                         spread_dev = mkt_spread - theo_spread
-                        spread_thr = 1.0  # min deviation to trade
+                        spread_thr = 2.0  # min deviation to trade
 
                         if abs(spread_dev) > spread_thr:
                             lo_limit = self.get_limit(lo_p)
