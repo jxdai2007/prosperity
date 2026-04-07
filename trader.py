@@ -65,8 +65,8 @@ MM_DYNAMIC_EMA_ALPHA = 0.3   # EMA smoothing for dynamic fair value
 BASKET_ENTRY_THRESHOLD = 50  # premium deviation to enter basket arb
 BASKET_EXIT_THRESHOLD = 10   # premium deviation to exit
 OPTIONS_EDGE_THRESHOLD = 4.0 # min edge to trade options
-INSIDER_THRESHOLD = 0.60     # accuracy threshold to follow an insider
-INSIDER_MIN_TRADES = 8       # min trades before trusting insider score
+INSIDER_THRESHOLD = 0.55     # accuracy threshold to follow an insider
+INSIDER_MIN_TRADES = 5       # min trades before trusting insider score
 INSIDER_WINDOW = 50          # rolling window for insider scoring
 CONVERSION_MAX = 10          # max conversion per tick
 
