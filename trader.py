@@ -538,7 +538,7 @@ class Trader:
             # P3: use fitted vol smile (FrankfurtHedgehogs approach)
             # coeffs from fitted volatility smile: IV = f(log(K/S)/sqrt(T))
             m_t_k = math.log(strike / S) / math.sqrt(T) if T > 1e-8 else 0
-            vol_smile_iv = 0.17576677 + 0.005 * m_t_k + 0.18 * m_t_k * m_t_k
+            vol_smile_iv = 0.17576677 + 0.01007566 * m_t_k + 0.18 * m_t_k * m_t_k
             vol_smile_iv = max(0.05, min(1.0, vol_smile_iv))
             fair = bs_call_price(S, strike, T, vol_smile_iv)
             # Edge threshold for P3 options
@@ -968,8 +968,8 @@ class Trader:
                         # Get mean-edge-adjusted fairs
                         m_lo = math.log(K_lo / S) / math.sqrt(T) if T > 1e-8 else 0
                         m_hi = math.log(K_hi / S) / math.sqrt(T) if T > 1e-8 else 0
-                        iv_lo = max(0.05, 0.17576677 + 0.005 * m_lo + 0.18 * m_lo * m_lo)
-                        iv_hi = max(0.05, 0.17576677 + 0.005 * m_hi + 0.18 * m_hi * m_hi)
+                        iv_lo = max(0.05, 0.17576677 + 0.01007566 * m_lo + 0.18 * m_lo * m_lo)
+                        iv_hi = max(0.05, 0.17576677 + 0.01007566 * m_hi + 0.18 * m_hi * m_hi)
                         fair_lo = bs_call_price(S, K_lo, T, iv_lo)
                         fair_hi = bs_call_price(S, K_hi, T, iv_hi)
 
