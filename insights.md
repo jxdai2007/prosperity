@@ -33,6 +33,11 @@
 - STARFRUIT needs wider spread (2): tighter spread costs -10k P2 MM
 - RESIN/AMETHYSTS need spread=2: spread=1 causes adverse selection (-14k)
 
+## 8. Basket exit logic is counterproductive
+- Removing the basket position exit (deviation < 10 → close position) improved P2 basket from 46k to 80k
+- The premium mean-reverts naturally; exiting early gives up significant profit
+- Let positions ride and accumulate on new entries only
+
 ## 7. SQUID_INK profits come from insider (Olivia) signals
 - Despite being "skipped" as a product archetype, SQUID_INK makes +15k from Olivia following
 - The insider system trades it because archetype="skip" is in the insider follow list
