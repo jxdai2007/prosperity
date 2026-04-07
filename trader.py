@@ -57,6 +57,7 @@ FIXED_FAIR_VALUES = {
 }
 
 CONVERSION_PRODUCTS = {"ORCHIDS"}  # MACARONS conversion loses money, disabled
+INSIDER_EXCLUDE = {"MAGNIFICENT_MACARONS", "ORCHIDS"}  # Don't follow insiders on conversion products
 
 # Strategy parameters (agent tunes these)
 MM_FIXED_SPREAD = 2          # half-spread for fixed-value market making
@@ -810,7 +811,7 @@ class Trader:
         for product, (direction, confidence) in insider_signals.items():
             if product in state.order_depths:
                 archetype = self.classify_product(product)
-                if archetype in ("dynamic", "component", "skip"):
+                if archetype in ("dynamic", "component", "skip") and product not in INSIDER_EXCLUDE:
                     try:
                         insider_orders = self.apply_insider(product, direction, confidence, state)
                         if insider_orders:

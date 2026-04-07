@@ -22,3 +22,18 @@
 - Removing P3 options MM resting orders improves hardmode and reduces adverse selection
 - Only take when clearly mispriced (edge > threshold and price > fair)
 - COCONUT_COUPON still benefits from MM with wide spread (0.8% of fair)
+
+## 5. MACARONS conversion actively loses money
+- Despite looking profitable in theory, MACARONS conversion lost -20k in R5
+- The conversion costs (transport + tariffs) exceed the arb spread
+- Disabling it improved P3 Full/Stress/Hardmode by 3.6k each
+
+## 6. Product-specific spreads matter
+- KELP benefits from tighter spread (1 vs 2): +4k P3 MM
+- STARFRUIT needs wider spread (2): tighter spread costs -10k P2 MM
+- RESIN/AMETHYSTS need spread=2: spread=1 causes adverse selection (-14k)
+
+## 7. SQUID_INK profits come from insider (Olivia) signals
+- Despite being "skipped" as a product archetype, SQUID_INK makes +15k from Olivia following
+- The insider system trades it because archetype="skip" is in the insider follow list
+- Direct mean-reversion trading SQUID_INK loses money (-8k in R1)
