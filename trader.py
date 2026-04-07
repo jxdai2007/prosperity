@@ -276,7 +276,7 @@ class Trader:
             return orders
 
         od = state.order_depths[product]
-        mid = get_wmid(od)
+        mid = get_mid(od)
         if mid == 0:
             return orders
 
