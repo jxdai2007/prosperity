@@ -926,12 +926,9 @@ class Trader:
                     time_in_day = ts / 1_000_000
                     T = max((7 - current_day - time_in_day) / 365.0, 1e-6)
 
-                    # Arb both adjacent (step=1) and skip-1 (step=2) pairs
-                    pairs = [(i, i+1) for i in range(len(vr_strikes)-1)]
-                    pairs += [(i, i+2) for i in range(len(vr_strikes)-2)]
-                    for i, j in pairs:
+                    for i in range(len(vr_strikes) - 1):
                         lo_p = vr_strikes[i]
-                        hi_p = vr_strikes[j]
+                        hi_p = vr_strikes[i + 1]
                         if lo_p not in state.order_depths or hi_p not in state.order_depths:
                             continue
 
