@@ -504,8 +504,8 @@ class Trader:
 
         # Market making around fair value (only for COCONUT with wide spread)
         if underlying == "COCONUT":
-            spread = max(3, int(fair * 0.01))
-            max_mm_qty = 15
+            spread = max(2, int(fair * 0.005))
+            max_mm_qty = 20
             buy_price = int(round(fair - spread))
             sell_price = int(round(fair + spread))
             buy_qty = min(limit - pos, max_mm_qty)
