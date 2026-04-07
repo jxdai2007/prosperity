@@ -335,10 +335,10 @@ class Trader:
 
         premium = basket_mid - comp_fair
 
-        # Track premium EMA (slow, for mean)
+        # Track premium EMA (adapt to structural premium level)
         pkey = f"basket_prem_{basket}"
         prev_prem = saved.get(pkey, premium)
-        ema_prem = 0.05 * premium + 0.95 * prev_prem
+        ema_prem = 0.02 * premium + 0.98 * prev_prem  # very slow EMA for structural level
         saved[pkey] = ema_prem
 
         # Track premium std
@@ -348,7 +348,7 @@ class Trader:
         saved[skey] = ema_std
 
         deviation = premium - ema_prem
-        entry_thr = max(BASKET_ENTRY_THRESHOLD, ema_std * 0.8)
+        entry_thr = max(BASKET_ENTRY_THRESHOLD, ema_std * 1.0)
         exit_thr = BASKET_EXIT_THRESHOLD
 
         basket_limit = self.get_limit(basket)
