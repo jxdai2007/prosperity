@@ -307,8 +307,17 @@ class Trader:
         ofi_ema = ofi_alpha * ofi + (1 - ofi_alpha) * prev_ofi
         saved[ofi_key] = ofi_ema
 
-        # Update EMA with OFI adjustment
-        alpha = MM_DYNAMIC_EMA_ALPHA
+        # Adaptive EMA: faster when trending, slower when choppy
+        trend_key = f"trend_{product}"
+        prev_move = saved.get(trend_key, 0)
+        curr_move = mid - saved.get(f"ema_{product}", mid)
+        # If same direction as last move, market is trending → faster alpha
+        if prev_move * curr_move > 0:
+            alpha = min(0.3, MM_DYNAMIC_EMA_ALPHA * 1.5)
+        else:
+            alpha = max(0.05, MM_DYNAMIC_EMA_ALPHA * 0.7)
+        saved[trend_key] = curr_move
+
         key = f"ema_{product}"
         prev_ema = saved.get(key, mid)
         ema = alpha * mid + (1 - alpha) * prev_ema
