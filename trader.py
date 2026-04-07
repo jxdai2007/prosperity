@@ -423,14 +423,7 @@ class Trader:
         basket_pos = self.get_position(basket, state)
         basket_od = state.order_depths[basket]
         basket_orders = []
-        # Scale qty with conviction: extreme deviations get more size
-        abs_dev = abs(deviation)
-        if abs_dev > 2 * entry_thr:
-            max_qty = 10
-        elif abs_dev > 1.5 * entry_thr:
-            max_qty = 5
-        else:
-            max_qty = 3
+        max_qty = 3  # optimal with running mean
 
         if deviation > entry_thr:
             # Basket expensive -> sell basket aggressively
