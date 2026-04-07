@@ -878,7 +878,10 @@ class Trader:
             valid_orders = []
             buy_total = 0
             sell_total = 0
-            for order in result[product]:
+            # Prioritize best-priced orders: buys at lowest price, sells at highest price
+            buy_orders_sorted = sorted([o for o in result[product] if o.quantity > 0], key=lambda o: o.price)
+            sell_orders_sorted = sorted([o for o in result[product] if o.quantity < 0], key=lambda o: -o.price)
+            for order in buy_orders_sorted + sell_orders_sorted:
                 if order.quantity > 0:
                     if pos + buy_total + order.quantity <= limit:
                         valid_orders.append(order)
