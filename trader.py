@@ -446,7 +446,7 @@ class Trader:
         if S <= 0:
             return orders
 
-        option_mid = get_mid(state.order_depths[product])
+        option_mid = get_wmid(state.order_depths[product])
         if option_mid <= 0:
             return orders
 
