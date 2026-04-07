@@ -349,8 +349,7 @@ class Trader:
         saved[skey] = ema_std
 
         deviation = premium - ema_prem
-        entry_thr = max(BASKET_ENTRY_THRESHOLD, ema_std * 0.8)
-        exit_thr = BASKET_EXIT_THRESHOLD
+        entry_thr = BASKET_ENTRY_THRESHOLD  # fixed threshold works best
 
         basket_limit = self.get_limit(basket)
         basket_pos = self.get_position(basket, state)
