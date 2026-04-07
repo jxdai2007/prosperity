@@ -714,6 +714,7 @@ class Trader:
         needed = target_pos - pos
 
         if needed > 0:
+            # Take all available liquidity
             for ask_price in sorted(od.sell_orders.keys()):
                 ask_vol = -od.sell_orders[ask_price]
                 qty = min(ask_vol, needed, limit - pos)
@@ -723,6 +724,11 @@ class Trader:
                     needed -= qty
                 if needed <= 0:
                     break
+            # Place resting order for remainder
+            if needed > 0:
+                best_ask = min(od.sell_orders.keys()) if od.sell_orders else 0
+                if best_ask > 0:
+                    orders.append(Order(product, best_ask, min(needed, limit - pos)))
         elif needed < 0:
             for bid_price in sorted(od.buy_orders.keys(), reverse=True):
                 bid_vol = od.buy_orders[bid_price]
@@ -733,6 +739,11 @@ class Trader:
                     needed += qty
                 if needed >= 0:
                     break
+            # Place resting order for remainder
+            if needed < 0:
+                best_bid = max(od.buy_orders.keys()) if od.buy_orders else 0
+                if best_bid > 0:
+                    orders.append(Order(product, best_bid, max(needed, -(limit + pos))))
 
         return orders
 
