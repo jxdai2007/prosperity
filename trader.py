@@ -528,7 +528,7 @@ class Trader:
             vol_smile_iv = max(0.05, min(1.0, vol_smile_iv))
             fair = bs_call_price(S, strike, T, vol_smile_iv)
             # Edge threshold for P3 options
-            edge_thr = 0.3
+            edge_thr = 0.5
 
         if fair <= 0.5:
             return orders
