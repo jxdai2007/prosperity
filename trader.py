@@ -281,7 +281,7 @@ class Trader:
             return orders
 
         # Update EMA (KELP benefits from faster adaptation)
-        alpha = 0.1 if product == "KELP" else MM_DYNAMIC_EMA_ALPHA
+        alpha = MM_DYNAMIC_EMA_ALPHA
         key = f"ema_{product}"
         prev_ema = saved.get(key, mid)
         ema = alpha * mid + (1 - alpha) * prev_ema
