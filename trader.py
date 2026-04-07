@@ -614,10 +614,10 @@ class Trader:
         buy_qty = min(limit - pos, max_mm_qty)
         sell_qty = min(limit + pos, max_mm_qty)
 
-        # Penny-stepping for options: place 1 tick inside best bid/ask
+        # Penny-stepping for P3 options only (hurts P2 COCONUT_COUPON)
         opt_best_bid, _ = get_best_bid(od)
         opt_best_ask, _ = get_best_ask(od)
-        if opt_best_bid > 0 and opt_best_ask > 0:
+        if underlying != "COCONUT" and opt_best_bid > 0 and opt_best_ask > 0:
             penny_buy = opt_best_bid + 1
             penny_sell = opt_best_ask - 1
             if penny_buy < int(fair) and penny_buy > buy_price and buy_qty > 1:
