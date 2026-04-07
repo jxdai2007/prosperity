@@ -970,45 +970,41 @@ class Trader:
                             if spread_dev > spread_thr:
                                 # Market spread too wide: sell lo (overpriced), buy hi (underpriced)
                                 for bp in sorted(lo_od.buy_orders.keys(), reverse=True):
-                                    if bp > fair_lo:
-                                        bv = lo_od.buy_orders[bp]
-                                        qty = min(bv, lo_limit + lo_pos, max_spread_qty)
-                                        if qty > 0:
-                                            if lo_p not in result: result[lo_p] = []
-                                            result[lo_p].append(Order(lo_p, bp, -qty))
-                                            max_spread_qty -= qty
+                                    bv = lo_od.buy_orders[bp]
+                                    qty = min(bv, lo_limit + lo_pos, max_spread_qty)
+                                    if qty > 0:
+                                        if lo_p not in result: result[lo_p] = []
+                                        result[lo_p].append(Order(lo_p, bp, -qty))
+                                        max_spread_qty -= qty
                                     if max_spread_qty <= 0: break
                                 max_spread_qty = 30
                                 for ap in sorted(hi_od.sell_orders.keys()):
-                                    if ap < fair_hi:
-                                        av = -hi_od.sell_orders[ap]
-                                        qty = min(av, hi_limit - hi_pos, max_spread_qty)
-                                        if qty > 0:
-                                            if hi_p not in result: result[hi_p] = []
-                                            result[hi_p].append(Order(hi_p, ap, qty))
-                                            max_spread_qty -= qty
+                                    av = -hi_od.sell_orders[ap]
+                                    qty = min(av, hi_limit - hi_pos, max_spread_qty)
+                                    if qty > 0:
+                                        if hi_p not in result: result[hi_p] = []
+                                        result[hi_p].append(Order(hi_p, ap, qty))
+                                        max_spread_qty -= qty
                                     if max_spread_qty <= 0: break
 
                             elif spread_dev < -spread_thr:
                                 # Market spread too narrow: buy lo (underpriced), sell hi (overpriced)
                                 for ap in sorted(lo_od.sell_orders.keys()):
-                                    if ap < fair_lo:
-                                        av = -lo_od.sell_orders[ap]
-                                        qty = min(av, lo_limit - lo_pos, max_spread_qty)
-                                        if qty > 0:
-                                            if lo_p not in result: result[lo_p] = []
-                                            result[lo_p].append(Order(lo_p, ap, qty))
-                                            max_spread_qty -= qty
+                                    av = -lo_od.sell_orders[ap]
+                                    qty = min(av, lo_limit - lo_pos, max_spread_qty)
+                                    if qty > 0:
+                                        if lo_p not in result: result[lo_p] = []
+                                        result[lo_p].append(Order(lo_p, ap, qty))
+                                        max_spread_qty -= qty
                                     if max_spread_qty <= 0: break
                                 max_spread_qty = 30
                                 for bp in sorted(hi_od.buy_orders.keys(), reverse=True):
-                                    if bp > fair_hi:
-                                        bv = hi_od.buy_orders[bp]
-                                        qty = min(bv, hi_limit + hi_pos, max_spread_qty)
-                                        if qty > 0:
-                                            if hi_p not in result: result[hi_p] = []
-                                            result[hi_p].append(Order(hi_p, bp, -qty))
-                                            max_spread_qty -= qty
+                                    bv = hi_od.buy_orders[bp]
+                                    qty = min(bv, hi_limit + hi_pos, max_spread_qty)
+                                    if qty > 0:
+                                        if hi_p not in result: result[hi_p] = []
+                                        result[hi_p].append(Order(hi_p, bp, -qty))
+                                        max_spread_qty -= qty
                                     if max_spread_qty <= 0: break
         except Exception:
             pass
