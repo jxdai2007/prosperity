@@ -280,7 +280,7 @@ class Trader:
         if mid == 0:
             return orders
 
-        # Update EMA (KELP benefits from faster adaptation)
+        # Update EMA
         alpha = MM_DYNAMIC_EMA_ALPHA
         key = f"ema_{product}"
         prev_ema = saved.get(key, mid)
@@ -411,8 +411,8 @@ class Trader:
 
         # Also place resting orders at entry threshold price (capture deviations)
         if True:
-            rest_price_buy = int(round(comp_fair + mean_prem - entry_thr * 0.8))
-            rest_price_sell = int(round(comp_fair + mean_prem + entry_thr * 0.8))
+            rest_price_buy = int(round(comp_fair + mean_prem - entry_thr))
+            rest_price_sell = int(round(comp_fair + mean_prem + entry_thr))
             can_buy = basket_limit - basket_pos
             can_sell = basket_limit + basket_pos
             if can_buy > 0 and rest_price_buy > 0:
