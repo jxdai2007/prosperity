@@ -40,7 +40,7 @@ BASKET_COMPOSITIONS = {
 BASKET_COMPONENTS = {"CROISSANTS", "JAMS", "DJEMBES", "CHOCOLATE", "STRAWBERRIES", "ROSES"}
 
 # Options underlying -- do NOT market-make directly (too risky at high limits)
-OPTIONS_UNDERLYINGS = {"VOLCANIC_ROCK", "COCONUT"}
+OPTIONS_UNDERLYINGS = {"COCONUT"}  # VOLCANIC_ROCK: try trading directly
 
 OPTIONS_CONFIG = {
     "VOLCANIC_ROCK_VOUCHER_9500":  {"underlying": "VOLCANIC_ROCK", "strike": 9500},
@@ -180,7 +180,7 @@ class Trader:
             archetype = "option"
         elif "RESIN" in product or "AMETHYST" in product:
             archetype = "fixed"
-        elif product in ("KELP", "STARFRUIT"):
+        elif product in ("KELP", "STARFRUIT", "VOLCANIC_ROCK"):
             archetype = "dynamic"
         elif product in ("SQUID_INK",):
             archetype = "skip"  # too volatile, skip for now
