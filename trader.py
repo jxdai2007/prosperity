@@ -57,7 +57,7 @@ FIXED_FAIR_VALUES = {
 }
 
 CONVERSION_PRODUCTS = {"ORCHIDS"}  # MACARONS conversion loses money, disabled
-INSIDER_EXCLUDE = {"MAGNIFICENT_MACARONS", "ORCHIDS", "JAMS", "CHOCOLATE", "STRAWBERRIES"}  # Products where insider following loses money
+INSIDER_EXCLUDE = {"MAGNIFICENT_MACARONS", "ORCHIDS", "CHOCOLATE", "STRAWBERRIES"}  # Products where insider following loses money
 
 # Strategy parameters (agent tunes these)
 MM_FIXED_SPREAD = 2          # half-spread for fixed-value market making
