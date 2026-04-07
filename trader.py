@@ -526,7 +526,7 @@ class Trader:
         # Market making around fair value
         if underlying == "COCONUT":
             spread = max(3, int(fair * 0.01))
-            max_mm_qty = 15
+            max_mm_qty = 25
         else:
             # P3 options: MM with mean-edge-adjusted fair (accurate pricing)
             spread = max(1, int(fair * 0.01))
