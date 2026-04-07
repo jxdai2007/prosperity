@@ -465,32 +465,16 @@ class Trader:
                 if max_qty <= 0:
                     break
 
-        # Resting orders at entry threshold + penny-step inside best bid/ask
-        rest_price_buy = int(round(comp_fair + mean_prem - entry_thr))
-        rest_price_sell = int(round(comp_fair + mean_prem + entry_thr))
-        can_buy = basket_limit - basket_pos
-        can_sell = basket_limit + basket_pos
-
-        # Penny-step: place inside best bid/ask if prices are below/above fair premium
-        bb, _ = get_best_bid(basket_od)
-        ba, _ = get_best_ask(basket_od)
-        fair_basket = int(round(comp_fair + mean_prem))
-        if bb > 0 and ba > 0:
-            penny_buy = bb + 1
-            penny_sell = ba - 1
-            if penny_buy < fair_basket and can_buy > 1:
-                pbq = can_buy // 3
-                basket_orders.append(Order(basket, penny_buy, pbq))
-                can_buy -= pbq
-            if penny_sell > fair_basket and can_sell > 1:
-                psq = can_sell // 3
-                basket_orders.append(Order(basket, penny_sell, -psq))
-                can_sell -= psq
-
-        if can_buy > 0 and rest_price_buy > 0:
-            basket_orders.append(Order(basket, rest_price_buy, can_buy))
-        if can_sell > 0 and rest_price_sell > 0:
-            basket_orders.append(Order(basket, rest_price_sell, -can_sell))
+        # Also place resting orders at entry threshold price (capture deviations)
+        if True:
+            rest_price_buy = int(round(comp_fair + mean_prem - entry_thr))
+            rest_price_sell = int(round(comp_fair + mean_prem + entry_thr))
+            can_buy = basket_limit - basket_pos
+            can_sell = basket_limit + basket_pos
+            if can_buy > 0 and rest_price_buy > 0:
+                basket_orders.append(Order(basket, rest_price_buy, can_buy))
+            if can_sell > 0 and rest_price_sell > 0:
+                basket_orders.append(Order(basket, rest_price_sell, -can_sell))
 
         if basket_orders:
             all_orders[basket] = basket_orders
