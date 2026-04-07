@@ -342,14 +342,8 @@ class Trader:
         ema_prem = 0.05 * premium + 0.95 * prev_prem
         saved[pkey] = ema_prem
 
-        # Track premium std
-        skey = f"basket_std_{basket}"
-        prev_std = saved.get(skey, 50.0)
-        ema_std = 0.05 * abs(premium - ema_prem) + 0.95 * prev_std
-        saved[skey] = ema_std
-
         deviation = premium - ema_prem
-        entry_thr = BASKET_ENTRY_THRESHOLD  # fixed threshold works best
+        entry_thr = BASKET_ENTRY_THRESHOLD
 
         basket_limit = self.get_limit(basket)
         basket_pos = self.get_position(basket, state)
