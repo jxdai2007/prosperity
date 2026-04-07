@@ -354,6 +354,20 @@ class Trader:
         buy_qty = limit - pos
         sell_qty = limit + pos
 
+        # Penny-stepping: place 1 tick inside best bid/ask when inside our spread
+        penny_buy = best_bid + 1
+        penny_sell = best_ask - 1
+        if penny_buy < int(fair) and penny_buy > buy_price and buy_qty > 1:
+            # Penny-step the bid (1 tick above best bid, below fair)
+            penny_bq = buy_qty // 3
+            orders.append(Order(product, penny_buy, penny_bq))
+            buy_qty -= penny_bq
+        if penny_sell > int(fair) and penny_sell < sell_price and sell_qty > 1:
+            # Penny-step the ask (1 tick below best ask, above fair)
+            penny_sq = sell_qty // 3
+            orders.append(Order(product, penny_sell, -penny_sq))
+            sell_qty -= penny_sq
+
         if spread >= 2 and buy_qty > 1 and sell_qty > 1:
             # Two levels: tight (half qty at spread-1) + wide (half at spread)
             tight_bq = buy_qty // 2
