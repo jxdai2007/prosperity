@@ -426,6 +426,119 @@ class Trader:
         return all_orders
 
     # ----------------------------------------------------------
+    # Strategy: Cross-Basket Spread (PB1 vs PB2)
+    # ----------------------------------------------------------
+    def cross_basket_spread(self, state: TradingState, saved: dict) -> dict:
+        """Trade PB1 vs PB2 relative value. 2*PB1 - 3*PB2 ≈ 2*DJEMBES."""
+        all_orders = {}
+        pb1 = "PICNIC_BASKET1"
+        pb2 = "PICNIC_BASKET2"
+        djembes = "DJEMBES"
+
+        if pb1 not in state.order_depths or pb2 not in state.order_depths:
+            return all_orders
+        if djembes not in state.order_depths:
+            return all_orders
+
+        pb1_mid = get_mid(state.order_depths[pb1])
+        pb2_mid = get_mid(state.order_depths[pb2])
+        d_mid = get_wmid(state.order_depths[djembes])
+        if pb1_mid == 0 or pb2_mid == 0 or d_mid == 0:
+            return all_orders
+
+        # Spread: PB1 - 1.5*PB2 should equal DJEMBES
+        spread = pb1_mid - 1.5 * pb2_mid
+        fair_spread = d_mid
+
+        # Track running mean of spread deviation
+        skey = "xbasket_spread"
+        snkey = "xbasket_n"
+        raw_dev = spread - fair_spread
+        n = saved.get(snkey, 0) + 1
+        saved[snkey] = n
+        if n == 1:
+            saved[skey] = raw_dev
+        else:
+            saved[skey] = saved.get(skey, raw_dev) + (raw_dev - saved.get(skey, raw_dev)) / n
+        mean_dev = saved[skey]
+        deviation = raw_dev - mean_dev
+
+        threshold = 20
+        max_qty_pb1 = 2
+        max_qty_pb2 = 3
+
+        pb1_limit = self.get_limit(pb1)
+        pb2_limit = self.get_limit(pb2)
+        pb1_pos = self.get_position(pb1, state)
+        pb2_pos = self.get_position(pb2, state)
+        pb1_od = state.order_depths[pb1]
+        pb2_od = state.order_depths[pb2]
+
+        if deviation > threshold:
+            # PB1 expensive vs PB2 → sell PB1, buy PB2
+            can_sell = pb1_limit + pb1_pos
+            can_buy = pb2_limit - pb2_pos
+            if can_sell >= max_qty_pb1 and can_buy >= max_qty_pb2:
+                pb1_orders = []
+                rem = max_qty_pb1
+                for bp in sorted(pb1_od.buy_orders.keys(), reverse=True):
+                    vol = pb1_od.buy_orders[bp]
+                    take = min(vol, rem)
+                    if take > 0:
+                        pb1_orders.append(Order(pb1, bp, -take))
+                        rem -= take
+                    if rem <= 0:
+                        break
+                if pb1_orders:
+                    all_orders[pb1] = pb1_orders
+
+                pb2_orders = []
+                rem = max_qty_pb2
+                for ap in sorted(pb2_od.sell_orders.keys()):
+                    vol = -pb2_od.sell_orders[ap]
+                    take = min(vol, rem)
+                    if take > 0:
+                        pb2_orders.append(Order(pb2, ap, take))
+                        rem -= take
+                    if rem <= 0:
+                        break
+                if pb2_orders:
+                    all_orders[pb2] = pb2_orders
+
+        elif deviation < -threshold:
+            # PB1 cheap vs PB2 → buy PB1, sell PB2
+            can_buy = pb1_limit - pb1_pos
+            can_sell = pb2_limit + pb2_pos
+            if can_buy >= max_qty_pb1 and can_sell >= max_qty_pb2:
+                pb1_orders = []
+                rem = max_qty_pb1
+                for ap in sorted(pb1_od.sell_orders.keys()):
+                    vol = -pb1_od.sell_orders[ap]
+                    take = min(vol, rem)
+                    if take > 0:
+                        pb1_orders.append(Order(pb1, ap, take))
+                        rem -= take
+                    if rem <= 0:
+                        break
+                if pb1_orders:
+                    all_orders[pb1] = pb1_orders
+
+                pb2_orders = []
+                rem = max_qty_pb2
+                for bp in sorted(pb2_od.buy_orders.keys(), reverse=True):
+                    vol = pb2_od.buy_orders[bp]
+                    take = min(vol, rem)
+                    if take > 0:
+                        pb2_orders.append(Order(pb2, bp, -take))
+                        rem -= take
+                    if rem <= 0:
+                        break
+                if pb2_orders:
+                    all_orders[pb2] = pb2_orders
+
+        return all_orders
+
+    # ----------------------------------------------------------
     # Strategy: Options (Volatility Trading)
     # ----------------------------------------------------------
     def options_trade(self, product: str, state: TradingState, saved: dict) -> list:
@@ -854,6 +967,16 @@ class Trader:
             except Exception:
                 if product not in result:
                     result[product] = []
+
+        # Cross-basket spread trading (PB1 vs PB2)
+        try:
+            xbasket_orders = self.cross_basket_spread(state, saved)
+            for p, ords in xbasket_orders.items():
+                if p not in result:
+                    result[p] = []
+                result[p].extend(ords)
+        except Exception:
+            pass
 
         # Apply insider signals to tradeable products
         for product, (direction, confidence) in insider_signals.items():
