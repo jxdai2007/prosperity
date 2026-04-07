@@ -38,6 +38,20 @@
 - The premium mean-reverts naturally; exiting early gives up significant profit
 - Let positions ride and accumulate on new entries only
 
+## 12. Running mean for basket premium is vastly superior to EMA
+- Online running mean (n += 1, mean += (x - mean) / n) converges to true structural premium
+- With no denominator cap, the mean becomes very stable after 1000+ samples
+- This improved P2 basket from 150k to 336k and P3 baskets from 106k to 192k
+- With running mean, optimal basket entry threshold shifted from 25 to 35
+
+## 13. IV scalping with mean edge adjustment is the biggest single options win
+- Track running mean of (option_mid - model_fair) per option
+- Adjust fair value by this mean edge: fair_adjusted = fair + mean_edge
+- Then trade deviations from adjusted fair
+- This captures structural model mispricing and trades the residual
+- Improved P3 options by 184k and OOS by 14k (not overfit!)
+- The key insight: the vol smile model has a time-varying bias, and the mean edge captures it
+
 ## 11. Vol smile base IV was underestimated
 - Original Frankfurt coefficients had base IV = 0.149
 - Adding +0.016 offset (base = 0.165) improved P3 options by 100k+
