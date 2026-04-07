@@ -601,8 +601,17 @@ class Trader:
         if sell_qty > 0 and sell_price > 0:
             orders.append(Order(product, sell_price, -sell_qty))
 
-        # P3 wide level disabled (concentrated on tight level)
-        # P2 COCONUT has no wide level either
+        # Second level: wider spread to capture large moves (P3 only)
+        if underlying != "COCONUT":
+            wide_spread = max(2, int(fair * 0.02))
+            wide_buy = int(round(fair - wide_spread + pos_skew))
+            wide_sell = int(round(fair + wide_spread + pos_skew))
+            wide_qty = min(limit - pos - buy_qty, max_mm_qty)
+            wide_sell_qty = min(limit + pos - sell_qty, max_mm_qty)
+            if wide_qty > 0 and wide_buy > 0 and wide_buy < buy_price:
+                orders.append(Order(product, wide_buy, wide_qty))
+            if wide_sell_qty > 0 and wide_sell > 0 and wide_sell > sell_price:
+                orders.append(Order(product, wide_sell, -wide_sell_qty))
 
         return orders
 
