@@ -1,10 +1,1 @@
-results.tsv
-*.log
-backtests/
-quick_baseline.txt
-file_checksums.txt
-experiment_feedback.md
-research_queue.md
-researcher.log
-__pycache__/
-*.pyc
+

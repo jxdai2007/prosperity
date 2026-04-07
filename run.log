@@ -1,0 +1,50 @@
+=== Eval Start ===
+timestamp: 2026-04-07T17:19:20Z
+commit: d01b017
+
+========== PROSPERITY 3 ==========
+
+=== P3 Market Making (Round 1) ===
+
+Profit summary:
+Round 1 day -2: 30,574
+Round 1 day -1: 29,967
+Round 1 day 0: 29,570
+Total profit: 90,112
+p3_mm_profit: 90112
+
+=== P3 Stat Arb (Round 2) ===
+PICNIC_BASKET2: -2,518
+RAINFOREST_RESIN: 25,404
+SQUID_INK: 0
+Total profit: 48,824
+
+Profit summary:
+Round 2 day -1: 59,276
+Round 2 day 0: 99,062
+Round 2 day 1: 48,824
+Total profit: 207,162
+p3_statarb_profit: 207162
+
+=== P3 Options (Round 3) ===
+KELP: 11,163
+PICNIC_BASKET1: -14,907
+PICNIC_BASKET2: 20,859
+RAINFOREST_RESIN: 23,290
+SQUID_INK: 0
+VOLCANIC_ROCK: 0
+VOLCANIC_ROCK_VOUCHER_10000: 173,176
+VOLCANIC_ROCK_VOUCHER_10250: -1,636
+VOLCANIC_ROCK_VOUCHER_10500: 682
+VOLCANIC_ROCK_VOUCHER_9500: 21,406
+VOLCANIC_ROCK_VOUCHER_9750: 91,168
+Total profit: 325,200
+
+Profit summary:
+Round 3 day 0: 381,397
+Round 3 day 1: 153,331
+Round 3 day 2: 325,200
+Total profit: 859,928
+p3_options_profit: 859928
+
+=== P3 Full (Round 5) ===
