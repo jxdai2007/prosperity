@@ -270,19 +270,7 @@ class Trader:
         saved[key] = ema
         self.ema[product] = ema
 
-        # Track mean edge (mid - ema) to correct structural EMA bias
-        mekey = f"mm_edge_{product}"
-        menkey = f"mm_edge_n_{product}"
-        mm_edge = mid - ema
-        men = saved.get(menkey, 0) + 1
-        saved[menkey] = men
-        if men == 1:
-            saved[mekey] = mm_edge
-        else:
-            saved[mekey] = saved.get(mekey, mm_edge) + (mm_edge - saved.get(mekey, mm_edge)) / men
-        mean_mm_edge = saved[mekey]
-
-        fair = ema + mean_mm_edge
+        fair = ema
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
         spread = 1 if product == "KELP" else MM_DYNAMIC_SPREAD
