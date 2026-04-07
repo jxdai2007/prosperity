@@ -409,8 +409,12 @@ class Trader:
         p2_day_str = os.environ.get("PROSPERITY2BT_DAY", "")
 
         if underlying == "COCONUT":
-            # P2 long-dated options: skip for now (agent can enable later)
-            return orders
+            # P2 long-dated options: T=245/365, sigma~0.194
+            if p2_day_str and p2_day_str.isdigit():
+                current_day = int(p2_day_str)
+            else:
+                current_day = 1
+            T = 245.0 / 365.0  # fixed TTE for P2 coconut coupon
         else:
             # P3 volcanic rock options
             if day_str and day_str.isdigit():
@@ -422,15 +426,22 @@ class Trader:
             total_cal_days = 7 - current_day - time_in_day
             T = max(total_cal_days / 365.0, 1e-6)
 
-        # Calculate implied vol
-        iv_key = f"iv_{product}"
-        prev_iv = saved.get(iv_key, 0.3)
-        current_iv = implied_vol(option_mid, S, strike, T, initial_guess=prev_iv)
-        smooth_iv = 0.3 * current_iv + 0.7 * prev_iv
-        saved[iv_key] = smooth_iv
+        # Calculate implied vol / fair value
+        if underlying == "COCONUT":
+            # P2: use fixed sigma for stable pricing
+            fixed_sigma = 0.194
+            fair = bs_call_price(S, strike, T, fixed_sigma)
+            edge_thr = 2.0  # tighter edge for P2 coconut coupon
+        else:
+            # P3: use smoothed IV
+            iv_key = f"iv_{product}"
+            prev_iv = saved.get(iv_key, 0.3)
+            current_iv = implied_vol(option_mid, S, strike, T, initial_guess=prev_iv)
+            smooth_iv = 0.3 * current_iv + 0.7 * prev_iv
+            saved[iv_key] = smooth_iv
+            fair = bs_call_price(S, strike, T, smooth_iv)
+            edge_thr = OPTIONS_EDGE_THRESHOLD
 
-        # Fair value using smoothed IV
-        fair = bs_call_price(S, strike, T, smooth_iv)
         if fair <= 0.5:
             return orders
 
@@ -439,32 +450,33 @@ class Trader:
         pos = self.get_position(product, state)
         od = state.order_depths[product]
 
-        # Only take clearly mispriced orders
-        if abs(edge) > OPTIONS_EDGE_THRESHOLD:
-            if edge > OPTIONS_EDGE_THRESHOLD:
+        # Take clearly mispriced orders
+        if abs(edge) > edge_thr:
+            if edge > edge_thr:
                 # Option overpriced, sell
                 best_bid, best_bid_vol = get_best_bid(od)
-                if best_bid > fair + 1.5:
+                if best_bid > fair + 1.0:
                     can_sell = limit + pos
-                    qty = min(best_bid_vol, can_sell, 5)
+                    qty = min(best_bid_vol, can_sell, 20 if underlying == "COCONUT" else 5)
                     if qty > 0:
                         orders.append(Order(product, best_bid, -qty))
-            elif edge < -OPTIONS_EDGE_THRESHOLD:
+            elif edge < -edge_thr:
                 # Option underpriced, buy
                 best_ask, best_ask_vol = get_best_ask(od)
-                if best_ask > 0 and best_ask < fair - 1.5:
+                if best_ask > 0 and best_ask < fair - 1.0:
                     can_buy = limit - pos
                     ask_vol = -best_ask_vol
-                    qty = min(ask_vol, can_buy, 5)
+                    qty = min(ask_vol, can_buy, 20 if underlying == "COCONUT" else 5)
                     if qty > 0:
                         orders.append(Order(product, best_ask, qty))
 
-        # Conservative market making around fair
-        # Skip long-dated options (COCONUT_COUPON) - too risky without better IV model
+        # Market making around fair value
         if underlying == "COCONUT":
-            return orders
-        spread = max(4, int(fair * 0.03))
-        max_mm_qty = 3
+            spread = max(3, int(fair * 0.01))
+            max_mm_qty = 15
+        else:
+            spread = max(4, int(fair * 0.03))
+            max_mm_qty = 3
         buy_price = int(round(fair - spread))
         sell_price = int(round(fair + spread))
 
