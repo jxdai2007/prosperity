@@ -601,18 +601,7 @@ class Trader:
         if sell_qty > 0 and sell_price > 0:
             orders.append(Order(product, sell_price, -sell_qty))
 
-        # Second level: wider spread to capture large moves
-        if underlying == "COCONUT":
-            # COCONUT: wider level at 2% spread
-            wide_spread = max(6, int(fair * 0.02))
-            wide_buy = int(round(fair - wide_spread + pos_skew))
-            wide_sell = int(round(fair + wide_spread + pos_skew))
-            wide_qty = min(limit - pos - buy_qty, 30)
-            wide_sell_qty = min(limit + pos - sell_qty, 30)
-            if wide_qty > 0 and wide_buy > 0 and wide_buy < buy_price:
-                orders.append(Order(product, wide_buy, wide_qty))
-            if wide_sell_qty > 0 and wide_sell > 0 and wide_sell > sell_price:
-                orders.append(Order(product, wide_sell, -wide_sell_qty))
+        # Second level: wider spread to capture large moves (P3 only)
         if underlying != "COCONUT":
             wide_spread = max(2, int(fair * 0.02))
             wide_buy = int(round(fair - wide_spread + pos_skew))
