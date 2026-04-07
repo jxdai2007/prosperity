@@ -384,22 +384,6 @@ class Trader:
                 if max_qty <= 0:
                     break
 
-        elif abs(deviation) < exit_thr and basket_pos != 0:
-            # Mean reversion: exit position when premium normalizes
-            if basket_pos > 0:
-                best_bid, best_bid_vol = get_best_bid(basket_od)
-                if best_bid > 0:
-                    qty = min(best_bid_vol, basket_pos, 10)
-                    if qty > 0:
-                        basket_orders.append(Order(basket, best_bid, -qty))
-            elif basket_pos < 0:
-                best_ask, best_ask_vol = get_best_ask(basket_od)
-                if best_ask > 0:
-                    ask_vol = -best_ask_vol
-                    qty = min(ask_vol, -basket_pos, 10)
-                    if qty > 0:
-                        basket_orders.append(Order(basket, best_ask, qty))
-
         if basket_orders:
             all_orders[basket] = basket_orders
 
