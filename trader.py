@@ -705,7 +705,11 @@ class Trader:
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
 
-        target_frac = min(0.8, (confidence - INSIDER_THRESHOLD) / (1.0 - INSIDER_THRESHOLD) + 0.2)
+        # High confidence (known insiders): go to full limit
+        if confidence >= 0.85:
+            target_frac = 1.0
+        else:
+            target_frac = min(0.8, (confidence - INSIDER_THRESHOLD) / (1.0 - INSIDER_THRESHOLD) + 0.2)
         target_pos = int(direction * limit * target_frac)
         needed = target_pos - pos
 
