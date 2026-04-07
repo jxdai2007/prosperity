@@ -621,11 +621,11 @@ class Trader:
             penny_buy = opt_best_bid + 1
             penny_sell = opt_best_ask - 1
             if penny_buy < int(fair) and penny_buy > buy_price and buy_qty > 1:
-                pq = buy_qty // 2
+                pq = buy_qty // 3
                 orders.append(Order(product, penny_buy, pq))
                 buy_qty -= pq
             if penny_sell > int(fair) and penny_sell < sell_price and sell_qty > 1:
-                pq = sell_qty // 2
+                pq = sell_qty // 3
                 orders.append(Order(product, penny_sell, -pq))
                 sell_qty -= pq
 
