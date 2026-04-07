@@ -461,7 +461,7 @@ class Trader:
         # Calculate implied vol / fair value
         if underlying == "COCONUT":
             # P2: use fixed sigma for stable pricing
-            fixed_sigma = 0.194
+            fixed_sigma = 0.19
             fair = bs_call_price(S, strike, T, fixed_sigma)
             edge_thr = 5.0  # optimal edge for P2 coconut coupon
         else:
