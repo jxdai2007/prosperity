@@ -209,7 +209,7 @@ class Trader:
         mid = get_mid(od)
 
         # Use weighted combination of fixed fair and mid for robustness
-        fair = fixed_fair if mid == 0 else int(round(0.95 * fixed_fair + 0.05 * mid))
+        fair = fixed_fair if mid == 0 else int(round(0.9 * fixed_fair + 0.1 * mid))
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
 
