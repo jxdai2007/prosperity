@@ -636,6 +636,10 @@ class Trader:
     # P3: Olivia is reliable across products
     # P2: Don't fast-follow P2 insiders — their signals work differently
     KNOWN_INSIDERS = {"Olivia"}
+    # Product-specific insiders (only follow on these specific products)
+    PRODUCT_INSIDERS = {
+        "ROSES": {"Rhianna", "Rihanna"},
+    }
 
     def detect_insider(self, state: TradingState, saved: dict) -> dict:
         signals = {}
@@ -645,16 +649,17 @@ class Trader:
             for product, trades in state.market_trades.items():
                 if product not in state.order_depths:
                     continue
+                product_insiders = self.PRODUCT_INSIDERS.get(product, set())
                 for trade in trades:
                     buyer = trade.buyer or ""
                     seller = trade.seller or ""
                     if buyer == "SUBMISSION" or seller == "SUBMISSION":
                         continue
                     # Known insiders: follow immediately
-                    if buyer in self.KNOWN_INSIDERS:
+                    if buyer in self.KNOWN_INSIDERS or buyer in product_insiders:
                         if product not in signals or True:
                             signals[product] = (1, 0.9)  # high confidence buy
-                    elif seller in self.KNOWN_INSIDERS:
+                    elif seller in self.KNOWN_INSIDERS or seller in product_insiders:
                         if product not in signals or True:
                             signals[product] = (-1, 0.9)  # high confidence sell
         insider_data = saved.get("insider", {})
