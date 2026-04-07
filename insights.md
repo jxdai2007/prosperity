@@ -38,6 +38,13 @@
 - The premium mean-reverts naturally; exiting early gives up significant profit
 - Let positions ride and accumulate on new entries only
 
+## 11. Vol smile base IV was underestimated
+- Original Frankfurt coefficients had base IV = 0.149
+- Adding +0.016 offset (base = 0.165) improved P3 options by 100k+
+- The market-implied vol was consistently above the smile fit
+- This is likely because the smile was fitted on historical data, but realized vol was higher
+- The optimal offset (+0.016) was found by grid search: +0.015=314k, +0.016=316k, +0.017=314k
+
 ## 9. COCONUT_COUPON: max_take=1 is optimal
 - Reducing max_take from 20 to 1 improved P2 options from 420k to 474k
 - Only taking the single best-priced contract per tick avoids adverse fills
