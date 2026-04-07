@@ -228,17 +228,24 @@ class Trader:
                     orders.append(Order(product, bid_price, -qty))
                     pos -= qty
 
-        # Resting orders with inventory skew
+        # Resting orders at tight spread
         buy_price = fair - MM_FIXED_SPREAD
         sell_price = fair + MM_FIXED_SPREAD
 
         buy_qty = limit - pos
         sell_qty = limit + pos
 
+        # Split qty between tight and wide levels
+        tight_frac = max(1, buy_qty // 2)
         if buy_qty > 0:
-            orders.append(Order(product, int(buy_price), buy_qty))
+            orders.append(Order(product, int(buy_price), tight_frac))
+            if buy_qty - tight_frac > 0:
+                orders.append(Order(product, int(buy_price - 1), buy_qty - tight_frac))
+        tight_frac = max(1, sell_qty // 2)
         if sell_qty > 0:
-            orders.append(Order(product, int(sell_price), -sell_qty))
+            orders.append(Order(product, int(sell_price), -tight_frac))
+            if sell_qty - tight_frac > 0:
+                orders.append(Order(product, int(sell_price + 1), -(sell_qty - tight_frac)))
 
         return orders
 
