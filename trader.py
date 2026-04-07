@@ -433,14 +433,13 @@ class Trader:
             fair = bs_call_price(S, strike, T, fixed_sigma)
             edge_thr = 2.0  # tighter edge for P2 coconut coupon
         else:
-            # P3: use smoothed IV
-            iv_key = f"iv_{product}"
-            prev_iv = saved.get(iv_key, 0.3)
-            current_iv = implied_vol(option_mid, S, strike, T, initial_guess=prev_iv)
-            smooth_iv = 0.3 * current_iv + 0.7 * prev_iv
-            saved[iv_key] = smooth_iv
-            fair = bs_call_price(S, strike, T, smooth_iv)
-            edge_thr = OPTIONS_EDGE_THRESHOLD
+            # P3: use fitted vol smile (FrankfurtHedgehogs approach)
+            # coeffs from fitted volatility smile: IV = f(log(K/S)/sqrt(T))
+            m_t_k = math.log(strike / S) / math.sqrt(T) if T > 1e-8 else 0
+            vol_smile_iv = 0.14876677 + 0.01007566 * m_t_k + 0.27362531 * m_t_k * m_t_k
+            vol_smile_iv = max(0.05, min(1.0, vol_smile_iv))
+            fair = bs_call_price(S, strike, T, vol_smile_iv)
+            edge_thr = 0.5  # much tighter - FrankfurtHedgehogs used THR_OPEN=0.5
 
         if fair <= 0.5:
             return orders
@@ -450,33 +449,36 @@ class Trader:
         pos = self.get_position(product, state)
         od = state.order_depths[product]
 
-        # Take clearly mispriced orders
-        if abs(edge) > edge_thr:
-            if edge > edge_thr:
-                # Option overpriced, sell
-                best_bid, best_bid_vol = get_best_bid(od)
-                if best_bid > fair + 1.0:
+        # Take mispriced orders aggressively
+        max_take = 20 if underlying == "COCONUT" else limit  # P3: go big, unhedged
+        if edge > edge_thr:
+            # Option overpriced, sell
+            for bid_price in sorted(od.buy_orders.keys(), reverse=True):
+                if bid_price > fair + edge_thr * 0.5:
+                    bid_vol = od.buy_orders[bid_price]
                     can_sell = limit + pos
-                    qty = min(best_bid_vol, can_sell, 20 if underlying == "COCONUT" else 5)
+                    qty = min(bid_vol, can_sell, max_take)
                     if qty > 0:
-                        orders.append(Order(product, best_bid, -qty))
-            elif edge < -edge_thr:
-                # Option underpriced, buy
-                best_ask, best_ask_vol = get_best_ask(od)
-                if best_ask > 0 and best_ask < fair - 1.0:
+                        orders.append(Order(product, bid_price, -qty))
+                        pos -= qty
+        elif edge < -edge_thr:
+            # Option underpriced, buy
+            for ask_price in sorted(od.sell_orders.keys()):
+                if ask_price < fair - edge_thr * 0.5:
+                    ask_vol = -od.sell_orders[ask_price]
                     can_buy = limit - pos
-                    ask_vol = -best_ask_vol
-                    qty = min(ask_vol, can_buy, 20 if underlying == "COCONUT" else 5)
+                    qty = min(ask_vol, can_buy, max_take)
                     if qty > 0:
-                        orders.append(Order(product, best_ask, qty))
+                        orders.append(Order(product, ask_price, qty))
+                        pos += qty
 
         # Market making around fair value
         if underlying == "COCONUT":
             spread = max(3, int(fair * 0.01))
             max_mm_qty = 15
         else:
-            spread = max(4, int(fair * 0.03))
-            max_mm_qty = 3
+            spread = max(2, int(fair * 0.02))
+            max_mm_qty = 20  # aggressive MM for P3 options (limit=200)
         buy_price = int(round(fair - spread))
         sell_price = int(round(fair + spread))
 
