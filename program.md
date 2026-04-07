@@ -74,6 +74,8 @@ LOOP FOREVER:
 ### 1. Decide
 Check weakest archetype in results.tsv. Priority: crashes > hardmode robustness > P2 gaps > weakest archetype.
 
+**STAGNATION DETECTION**: Before deciding, check the last 3-5 experiments in results.tsv. If composite_score improvements are consistently <2k (diminishing returns / stagnation), you MUST escalate to **Radical Mode** (see below) instead of continuing with small parameter tweaks.
+
 ### 2. Implement
 Modify ONLY `trader.py`. Tag: `git commit -am "exp: [archetype] description"`
 
@@ -97,6 +99,39 @@ Update `insights.md` with transferable principles.
 
 ### 7. Reflect (every 10 experiments)
 `python3 summarize_results.py`
+
+## Radical Mode (Triggered by Stagnation)
+
+When 3+ consecutive experiments show <2k composite improvement, STOP doing parameter tweaks. Instead:
+
+### Step 1: Research
+Search arxiv, Google Scholar, and the web for papers and strategies relevant to the weakest archetype. Focus areas:
+- **Market Making**: Avellaneda-Stoikov, GLFT, micro-price (Stoikov 2018), order flow imbalance, VPIN toxic flow detection, Bayesian fair value updating, Hawkes process order arrival
+- **Basket/Stat Arb**: Component leg trading (trade components alongside baskets), lead-lag signals between basket and components, Ornstein-Uhlenbeck optimal entry/exit, cross-impact aware execution
+- **Options**: Gamma scalping (realized vs implied vol), dispersion trading across strikes, SVI/eSSVI arbitrage-free vol surfaces, cross-strike delta-neutral portfolio management, risk-sensitive options MM
+- **Insider/Information**: Adversarial bot pattern detection, Kyle/Glosten-Milgrom information models, classifier for ALL trader names (not just known insiders)
+- **General**: HMM regime detection, reinforcement learning approaches, mean-field game models
+
+### Step 2: Synthesize
+Don't just pick one paper — look for combinations:
+- Can two mediocre ideas compose into a strong one?
+- Can an idea from one archetype transfer to another?
+- Can a previously discarded idea work now that the baseline has changed?
+- Re-read `insights.md` for near-misses that might work differently in combination.
+
+### Step 3: Propose & Implement
+Pick the single highest-expected-impact radical change. Prefer **structural** changes (new strategy architecture, new signal source, new product enablement) over **tuning** (parameter adjustments). Examples of radical vs incremental:
+- **Radical**: Enable component leg trading (250-350 position limits vs 60-100 basket limits)
+- **Radical**: Replace EMA+linear skew with Avellaneda-Stoikov optimal quoting
+- **Radical**: Add OFI signal to enable SQUID_INK trading (currently 0 contribution)
+- **Radical**: Add realized-vs-implied vol gamma scalping overlay to options
+- **Incremental** (avoid during radical mode): changing a spread from 2 to 3, adjusting an EMA alpha, tweaking an edge threshold
+
+### Step 4: If radical change fails
+Don't revert to incremental mode immediately. Try 2-3 radical ideas before concluding the current approach is near-optimal. Radical changes may need supporting changes to work (e.g., component trading may need new position management logic).
+
+### Step 5: Update Research Directions
+After each radical experiment, update the "Research Directions" section below with what was tried, what worked, and what new directions opened up.
 
 ## Critical Weaknesses to Fix (Priority Order)
 
