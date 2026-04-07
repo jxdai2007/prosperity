@@ -68,7 +68,7 @@ BASKET_EXIT_THRESHOLD = 10   # premium deviation to exit
 OPTIONS_EDGE_THRESHOLD = 4.0 # min edge to trade options
 INSIDER_THRESHOLD = 0.55     # accuracy threshold to follow an insider
 INSIDER_MIN_TRADES = 5       # min trades before trusting insider score
-INSIDER_WINDOW = 50          # rolling window for insider scoring
+INSIDER_WINDOW = 30          # rolling window for insider scoring
 CONVERSION_MAX = 10          # max conversion per tick
 
 DEFAULT_LIMIT = 20           # conservative default for unknown products
