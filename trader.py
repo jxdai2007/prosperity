@@ -197,7 +197,7 @@ class Trader:
         elif product in ("KELP", "STARFRUIT"):
             archetype = "dynamic"
         elif product in ("SQUID_INK",):
-            archetype = "skip"  # too volatile, skip for now
+            archetype = "spike"  # spike detection mean-reversion
         else:
             archetype = "skip"
 
@@ -370,6 +370,116 @@ class Trader:
             orders.append(Order(product, buy_price, buy_qty))
         if sell_qty > 0:
             orders.append(Order(product, sell_price, -sell_qty))
+
+        return orders
+
+    # ----------------------------------------------------------
+    # Strategy: Spike Detection Mean Reversion (SQUID_INK)
+    # ----------------------------------------------------------
+    def spike_trade(self, product: str, state: TradingState, saved: dict) -> list:
+        orders = []
+        if product not in state.order_depths:
+            return orders
+
+        od = state.order_depths[product]
+        mid = get_mid(od)
+        if mid == 0:
+            return orders
+
+        # Track running mean and variance (online Welford's algorithm)
+        mkey = f"spike_mean_{product}"
+        vkey = f"spike_var_{product}"
+        nkey = f"spike_n_{product}"
+        pkey = f"spike_prev_{product}"
+
+        n = saved.get(nkey, 0) + 1
+        saved[nkey] = n
+        prev_mean = saved.get(mkey, mid)
+        if n == 1:
+            saved[mkey] = mid
+            saved[vkey] = 0.0
+            saved[pkey] = mid
+            return orders  # need history
+
+        # Update running mean and variance
+        delta = mid - prev_mean
+        new_mean = prev_mean + delta / n
+        delta2 = mid - new_mean
+        new_var = saved.get(vkey, 0.0) + delta * delta2
+        saved[mkey] = new_mean
+        saved[vkey] = new_var
+
+        # Need at least 100 ticks for reliable stats
+        if n < 100:
+            saved[pkey] = mid
+            return orders
+
+        variance = new_var / (n - 1)
+        std = math.sqrt(variance) if variance > 0 else 1.0
+
+        # Spike detection: large tick-to-tick move
+        prev_mid = saved.get(pkey, mid)
+        saved[pkey] = mid
+        tick_move = abs(mid - prev_mid)
+        spike_threshold = 10  # minimum tick move to trigger
+
+        # Only trade when price deviates significantly from mean AND after a spike
+        deviation = (mid - new_mean) / std if std > 0 else 0
+        limit = self.get_limit(product)
+        pos = self.get_position(product, state)
+        max_qty = 15  # conservative position size
+
+        # Check if we're in a spike state (recent large move)
+        spike_key = f"spike_active_{product}"
+        spike_decay = saved.get(spike_key, 0)
+
+        if tick_move >= spike_threshold:
+            spike_decay = 10  # stay active for 10 ticks after spike
+        elif spike_decay > 0:
+            spike_decay -= 1
+        saved[spike_key] = spike_decay
+
+        if spike_decay > 0 and abs(deviation) > 1.5:
+            # Spike active + price far from mean: fade the move
+            if deviation > 1.5:
+                # Price spiked up, sell
+                for bid_price in sorted(od.buy_orders.keys(), reverse=True):
+                    bid_vol = od.buy_orders[bid_price]
+                    can_sell = min(limit + pos, max_qty + pos)  # limit total short
+                    qty = min(bid_vol, can_sell)
+                    if qty > 0:
+                        orders.append(Order(product, bid_price, -qty))
+                        pos -= qty
+            elif deviation < -1.5:
+                # Price spiked down, buy
+                for ask_price in sorted(od.sell_orders.keys()):
+                    ask_vol = -od.sell_orders[ask_price]
+                    can_buy = min(limit - pos, max_qty - pos)  # limit total long
+                    qty = min(ask_vol, can_buy)
+                    if qty > 0:
+                        orders.append(Order(product, ask_price, qty))
+                        pos += qty
+
+        # Exit positions when price reverts to mean (|deviation| < 0.5)
+        if abs(deviation) < 0.5 and pos != 0:
+            if pos > 0:
+                for bid_price in sorted(od.buy_orders.keys(), reverse=True):
+                    bid_vol = od.buy_orders[bid_price]
+                    qty = min(bid_vol, pos)
+                    if qty > 0:
+                        orders.append(Order(product, bid_price, -qty))
+                        pos -= qty
+                    if pos <= 0:
+                        break
+            elif pos < 0:
+                for ask_price in sorted(od.sell_orders.keys()):
+                    ask_vol = -od.sell_orders[ask_price]
+                    qty = min(ask_vol, -pos)
+                    if qty > 0:
+                        orders.append(Order(product, ask_price, qty))
+                        pos += qty
+                    if pos >= 0:
+                        break
 
         return orders
 
@@ -906,6 +1016,9 @@ class Trader:
                             result[p] = []
                         result[p].extend(ords)
 
+                elif archetype == "spike":
+                    result[product] = self.spike_trade(product, state, saved)
+
                 elif archetype == "option":
                     result[product] = self.options_trade(product, state, saved)
 
@@ -924,7 +1037,7 @@ class Trader:
         for product, (direction, confidence) in insider_signals.items():
             if product in state.order_depths:
                 archetype = self.classify_product(product)
-                if archetype in ("dynamic", "component", "skip") and product not in INSIDER_EXCLUDE:
+                if archetype in ("dynamic", "component", "skip", "spike") and product not in INSIDER_EXCLUDE:
                     try:
                         insider_orders = self.apply_insider(product, direction, confidence, state)
                         if insider_orders:
