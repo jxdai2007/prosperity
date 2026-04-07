@@ -423,51 +423,6 @@ class Trader:
         if basket_orders:
             all_orders[basket] = basket_orders
 
-        # Component leg trading: trade components opposite to basket deviation
-        # When basket is expensive (deviation > thr), components are cheap → buy components
-        # When basket is cheap (deviation < -thr), components are expensive → sell components
-        # Component limits are much larger than basket limits, so this amplifies arb profits
-        comp_qty_mult = 5  # multiplier per component weight
-        if abs(deviation) > entry_thr:
-            for c, weight in comp.items():
-                if c not in state.order_depths:
-                    continue
-                c_od = state.order_depths[c]
-                c_limit = self.get_limit(c)
-                c_pos = self.get_position(c, state)
-                target_qty = weight * comp_qty_mult
-
-                if deviation > entry_thr:
-                    # Components cheap → buy
-                    can_buy = c_limit - c_pos
-                    qty = min(target_qty, can_buy)
-                    for ask_price in sorted(c_od.sell_orders.keys()):
-                        if qty <= 0:
-                            break
-                        ask_vol = -c_od.sell_orders[ask_price]
-                        take = min(ask_vol, qty)
-                        if take > 0:
-                            if c not in all_orders:
-                                all_orders[c] = []
-                            all_orders[c].append(Order(c, ask_price, take))
-                            c_pos += take
-                            qty -= take
-                else:
-                    # Components expensive → sell
-                    can_sell = c_limit + c_pos
-                    qty = min(target_qty, can_sell)
-                    for bid_price in sorted(c_od.buy_orders.keys(), reverse=True):
-                        if qty <= 0:
-                            break
-                        bid_vol = c_od.buy_orders[bid_price]
-                        take = min(bid_vol, qty)
-                        if take > 0:
-                            if c not in all_orders:
-                                all_orders[c] = []
-                            all_orders[c].append(Order(c, bid_price, -take))
-                            c_pos -= take
-                            qty -= take
-
         return all_orders
 
     # ----------------------------------------------------------
