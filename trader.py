@@ -463,7 +463,7 @@ class Trader:
             # P2: use fixed sigma for stable pricing
             fixed_sigma = 0.194
             fair = bs_call_price(S, strike, T, fixed_sigma)
-            edge_thr = 3.0  # wider edge for P2 coconut coupon
+            edge_thr = 4.0  # wider edge for P2 coconut coupon
         else:
             # P3: use fitted vol smile (FrankfurtHedgehogs approach)
             # coeffs from fitted volatility smile: IV = f(log(K/S)/sqrt(T))
