@@ -356,7 +356,7 @@ class Trader:
         basket_pos = self.get_position(basket, state)
         basket_od = state.order_depths[basket]
         basket_orders = []
-        max_qty = basket_limit  # take as much as available
+        max_qty = 15  # aggressive but controlled
 
         if deviation > entry_thr:
             # Basket expensive -> sell basket aggressively
