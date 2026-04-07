@@ -70,6 +70,19 @@
 - The underlying position interferes with options pricing and fills
 - Key insight: for options underlyings, keep them as pure reference prices only
 
+## 17. Volume-weighted mid (wmid) improves basket component and option pricing
+- wmid = (best_bid * ask_vol + best_ask * bid_vol) / total_vol
+- Helps for basket components: +500 composite
+- Helps for option mid: +1.7k composite (better edge estimation)
+- Does NOT help for: fixed MM (pegged products), dynamic MM, options underlying
+- The volume imbalance in components/options gives useful directional information
+
+## 18. Rhianna is a reliable ROSES insider, Vladimir/Remy are NOT reliable
+- Rhianna/Rihanna fast-follow on ROSES: +19k P2 basket
+- Vladimir/Remy fast-follow on CHOCOLATE: -163k (catastrophic)
+- Only use name-specific insiders when you have evidence they work
+- Product-specific insider mapping is crucial — not all insiders work on all products
+
 ## 16. COCONUT edge threshold scales with max_take
 - With max_take=1, optimal edge is 5.0 (up from 2.0 with max_take=20)
 - Smaller takes + wider edge = high-conviction, best-fill-only trades
