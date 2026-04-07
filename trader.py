@@ -357,17 +357,7 @@ class Trader:
         mean_prem = saved[pkey]
 
         deviation = premium - mean_prem
-
-        # Momentum: track fast EMA of deviation for trend signal
-        mkey = f"basket_mom_{basket}"
-        prev_mom = saved.get(mkey, deviation)
-        momentum = 0.2 * deviation + 0.8 * prev_mom
-        saved[mkey] = momentum
-
-        # Lower threshold when momentum agrees with deviation (trend confirmation)
         entry_thr = BASKET_ENTRY_THRESHOLD
-        if (deviation > 0 and momentum > 10) or (deviation < 0 and momentum < -10):
-            entry_thr = entry_thr * 0.7  # 30% lower threshold for trend-confirmed signals
 
         basket_limit = self.get_limit(basket)
         basket_pos = self.get_position(basket, state)
