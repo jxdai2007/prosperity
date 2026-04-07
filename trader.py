@@ -909,6 +909,110 @@ class Trader:
                 if product not in result:
                     result[product] = []
 
+        # Cross-option spread arbitrage (P3 volcanic rock vouchers only)
+        # If bull call spread (C(K1) - C(K2)) deviates from BS theoretical, arb it
+        try:
+            vr_strikes = sorted([p for p in products if "VOLCANIC_ROCK_VOUCHER" in p],
+                                key=lambda p: OPTIONS_CONFIG[p]["strike"])
+            if len(vr_strikes) >= 2 and "VOLCANIC_ROCK" in state.order_depths:
+                S = get_mid(state.order_depths["VOLCANIC_ROCK"])
+                if S > 0:
+                    day_str = os.environ.get("PROSPERITY3BT_DAY", "")
+                    current_day = int(day_str) if day_str and day_str.isdigit() else 3
+                    ts = state.timestamp
+                    time_in_day = ts / 1_000_000
+                    T = max((7 - current_day - time_in_day) / 365.0, 1e-6)
+
+                    for i in range(len(vr_strikes) - 1):
+                        lo_p = vr_strikes[i]
+                        hi_p = vr_strikes[i + 1]
+                        if lo_p not in state.order_depths or hi_p not in state.order_depths:
+                            continue
+
+                        K_lo = OPTIONS_CONFIG[lo_p]["strike"]
+                        K_hi = OPTIONS_CONFIG[hi_p]["strike"]
+
+                        # Get mean-edge-adjusted fairs
+                        m_lo = math.log(K_lo / S) / math.sqrt(T) if T > 1e-8 else 0
+                        m_hi = math.log(K_hi / S) / math.sqrt(T) if T > 1e-8 else 0
+                        iv_lo = max(0.05, 0.17576677 + 0.01007566 * m_lo + 0.18 * m_lo * m_lo)
+                        iv_hi = max(0.05, 0.17576677 + 0.01007566 * m_hi + 0.18 * m_hi * m_hi)
+                        fair_lo = bs_call_price(S, K_lo, T, iv_lo)
+                        fair_hi = bs_call_price(S, K_hi, T, iv_hi)
+
+                        # Adjust with mean edges
+                        me_lo = saved.get(f"opt_edge_{lo_p}", 0)
+                        me_hi = saved.get(f"opt_edge_{hi_p}", 0)
+                        fair_lo += me_lo
+                        fair_hi += me_hi
+
+                        theo_spread = fair_lo - fair_hi  # should be positive
+
+                        # Market spread
+                        lo_od = state.order_depths[lo_p]
+                        hi_od = state.order_depths[hi_p]
+                        lo_mid = get_wmid(lo_od)
+                        hi_mid = get_wmid(hi_od)
+                        if lo_mid <= 0 or hi_mid <= 0:
+                            continue
+                        mkt_spread = lo_mid - hi_mid
+
+                        spread_dev = mkt_spread - theo_spread
+                        spread_thr = 2.0  # min deviation to trade
+
+                        if abs(spread_dev) > spread_thr:
+                            lo_limit = self.get_limit(lo_p)
+                            hi_limit = self.get_limit(hi_p)
+                            lo_pos = self.get_position(lo_p, state)
+                            hi_pos = self.get_position(hi_p, state)
+                            max_spread_qty = 5
+
+                            if spread_dev > spread_thr:
+                                # Market spread too wide: sell lo (overpriced), buy hi (underpriced)
+                                for bp in sorted(lo_od.buy_orders.keys(), reverse=True):
+                                    if bp > fair_lo:
+                                        bv = lo_od.buy_orders[bp]
+                                        qty = min(bv, lo_limit + lo_pos, max_spread_qty)
+                                        if qty > 0:
+                                            if lo_p not in result: result[lo_p] = []
+                                            result[lo_p].append(Order(lo_p, bp, -qty))
+                                            max_spread_qty -= qty
+                                    if max_spread_qty <= 0: break
+                                max_spread_qty = 5
+                                for ap in sorted(hi_od.sell_orders.keys()):
+                                    if ap < fair_hi:
+                                        av = -hi_od.sell_orders[ap]
+                                        qty = min(av, hi_limit - hi_pos, max_spread_qty)
+                                        if qty > 0:
+                                            if hi_p not in result: result[hi_p] = []
+                                            result[hi_p].append(Order(hi_p, ap, qty))
+                                            max_spread_qty -= qty
+                                    if max_spread_qty <= 0: break
+
+                            elif spread_dev < -spread_thr:
+                                # Market spread too narrow: buy lo (underpriced), sell hi (overpriced)
+                                for ap in sorted(lo_od.sell_orders.keys()):
+                                    if ap < fair_lo:
+                                        av = -lo_od.sell_orders[ap]
+                                        qty = min(av, lo_limit - lo_pos, max_spread_qty)
+                                        if qty > 0:
+                                            if lo_p not in result: result[lo_p] = []
+                                            result[lo_p].append(Order(lo_p, ap, qty))
+                                            max_spread_qty -= qty
+                                    if max_spread_qty <= 0: break
+                                max_spread_qty = 5
+                                for bp in sorted(hi_od.buy_orders.keys(), reverse=True):
+                                    if bp > fair_hi:
+                                        bv = hi_od.buy_orders[bp]
+                                        qty = min(bv, hi_limit + hi_pos, max_spread_qty)
+                                        if qty > 0:
+                                            if hi_p not in result: result[hi_p] = []
+                                            result[hi_p].append(Order(hi_p, bp, -qty))
+                                            max_spread_qty -= qty
+                                    if max_spread_qty <= 0: break
+        except Exception:
+            pass
+
         # Apply insider signals to tradeable products
         for product, (direction, confidence) in insider_signals.items():
             if product in state.order_depths:
