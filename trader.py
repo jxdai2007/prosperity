@@ -409,16 +409,21 @@ class Trader:
                 if max_qty <= 0:
                     break
 
-        # Also place resting orders at entry threshold price (capture deviations)
-        if True:
-            rest_price_buy = int(round(comp_fair + mean_prem - entry_thr))
-            rest_price_sell = int(round(comp_fair + mean_prem + entry_thr))
-            can_buy = basket_limit - basket_pos
-            can_sell = basket_limit + basket_pos
-            if can_buy > 0 and rest_price_buy > 0:
-                basket_orders.append(Order(basket, rest_price_buy, can_buy))
-            if can_sell > 0 and rest_price_sell > 0:
-                basket_orders.append(Order(basket, rest_price_sell, -can_sell))
+        # Resting orders at entry threshold price (capture deviations)
+        fair_basket = int(round(comp_fair + mean_prem))
+        rest_price_buy = fair_basket - entry_thr
+        rest_price_sell = fair_basket + entry_thr
+        can_buy = basket_limit - basket_pos
+        can_sell = basket_limit + basket_pos
+        if can_buy > 0 and rest_price_buy > 0:
+            basket_orders.append(Order(basket, rest_price_buy, can_buy))
+        if can_sell > 0 and rest_price_sell > 0:
+            basket_orders.append(Order(basket, rest_price_sell, -can_sell))
+        # Also place tighter resting for position-reducing trades
+        if basket_pos > 0 and can_sell > 0:
+            basket_orders.append(Order(basket, fair_basket + int(entry_thr * 0.5), -min(can_sell, 3)))
+        elif basket_pos < 0 and can_buy > 0:
+            basket_orders.append(Order(basket, fair_basket - int(entry_thr * 0.5), min(can_buy, 3)))
 
         if basket_orders:
             all_orders[basket] = basket_orders
