@@ -655,6 +655,17 @@ class Trader:
             if wide_sell_qty > 0 and wide_sell > 0 and wide_sell > sell_price:
                 orders.append(Order(product, wide_sell, -wide_sell_qty))
 
+            # Third level: very wide (3%) to capture extreme moves
+            vwide_spread = max(4, int(fair * 0.03))
+            vwide_buy = int(round(fair - vwide_spread + pos_skew))
+            vwide_sell = int(round(fair + vwide_spread + pos_skew))
+            vwide_qty = min(limit - pos - buy_qty - wide_qty, max_mm_qty)
+            vwide_sell_qty = min(limit + pos - sell_qty - wide_sell_qty, max_mm_qty)
+            if vwide_qty > 0 and vwide_buy > 0 and vwide_buy < wide_buy:
+                orders.append(Order(product, vwide_buy, vwide_qty))
+            if vwide_sell_qty > 0 and vwide_sell > 0 and vwide_sell > wide_sell:
+                orders.append(Order(product, vwide_sell, -vwide_sell_qty))
+
         return orders
 
     # ----------------------------------------------------------
