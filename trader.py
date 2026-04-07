@@ -480,6 +480,11 @@ class Trader:
 
         edge = option_mid - fair
         limit = self.get_limit(product)
+        if underlying == "COCONUT":
+            # Position-aware edge: wider when heavily positioned
+            cpos = self.get_position(product, state)
+            pos_frac = abs(cpos) / limit if limit > 0 else 0
+            edge_thr = edge_thr * (1.0 + pos_frac * 0.5)  # up to 50% wider at limit
         if underlying != "COCONUT":
             pass  # no cap needed with mean edge pricing
 
