@@ -965,7 +965,7 @@ class Trader:
                             hi_limit = self.get_limit(hi_p)
                             lo_pos = self.get_position(lo_p, state)
                             hi_pos = self.get_position(hi_p, state)
-                            max_spread_qty = 10
+                            max_spread_qty = 20
 
                             if spread_dev > spread_thr:
                                 # Market spread too wide: sell lo (overpriced), buy hi (underpriced)
@@ -978,7 +978,7 @@ class Trader:
                                             result[lo_p].append(Order(lo_p, bp, -qty))
                                             max_spread_qty -= qty
                                     if max_spread_qty <= 0: break
-                                max_spread_qty = 10
+                                max_spread_qty = 20
                                 for ap in sorted(hi_od.sell_orders.keys()):
                                     if ap < fair_hi:
                                         av = -hi_od.sell_orders[ap]
@@ -1000,7 +1000,7 @@ class Trader:
                                             result[lo_p].append(Order(lo_p, ap, qty))
                                             max_spread_qty -= qty
                                     if max_spread_qty <= 0: break
-                                max_spread_qty = 10
+                                max_spread_qty = 20
                                 for bp in sorted(hi_od.buy_orders.keys(), reverse=True):
                                     if bp > fair_hi:
                                         bv = hi_od.buy_orders[bp]
