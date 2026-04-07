@@ -399,6 +399,16 @@ class Trader:
                     if qty > 0:
                         basket_orders.append(Order(basket, best_ask, qty))
 
+        # Also place resting orders to capture premium mean-reversion
+        if not basket_orders and basket_pos == 0:
+            # No position, place resting orders at entry threshold
+            rest_buy = int(round(comp_fair + ema_prem - entry_thr))
+            rest_sell = int(round(comp_fair + ema_prem + entry_thr))
+            if rest_buy > 0:
+                basket_orders.append(Order(basket, rest_buy, min(5, basket_limit)))
+            if rest_sell > 0:
+                basket_orders.append(Order(basket, rest_sell, -min(5, basket_limit)))
+
         if basket_orders:
             all_orders[basket] = basket_orders
 
