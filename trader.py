@@ -59,7 +59,7 @@ FIXED_FAIR_VALUES = {
 CONVERSION_PRODUCTS = {"MAGNIFICENT_MACARONS", "ORCHIDS"}
 
 # Strategy parameters (agent tunes these)
-MM_FIXED_SPREAD = 1          # half-spread for fixed-value market making
+MM_FIXED_SPREAD = 2          # half-spread for fixed-value market making
 MM_DYNAMIC_SPREAD = 2        # half-spread for dynamic market making
 MM_DYNAMIC_EMA_ALPHA = 0.3   # EMA smoothing for dynamic fair value
 BASKET_ENTRY_THRESHOLD = 50  # premium deviation to enter basket arb
