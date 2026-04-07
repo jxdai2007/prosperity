@@ -352,36 +352,13 @@ class Trader:
         deviation = premium - mean_prem
         entry_thr = BASKET_ENTRY_THRESHOLD
 
-        # Adjust threshold when insider (Olivia) trades a component
-        # Olivia buying component → basket will go up → lower buy threshold
-        insider_adj_key = f"basket_insider_adj_{basket}"
-        insider_adj = saved.get(insider_adj_key, 0)
-        # Decay insider adjustment over time
-        saved[insider_adj_key] = insider_adj * 0.95
-        # Check if Olivia traded a component this tick
-        if state.market_trades:
-            for c in comp:
-                if c in state.market_trades:
-                    for trade in state.market_trades[c]:
-                        buyer = trade.buyer or ""
-                        seller = trade.seller or ""
-                        if buyer in self.KNOWN_INSIDERS:
-                            saved[insider_adj_key] = 50  # Olivia buying → expect basket up
-                        elif seller in self.KNOWN_INSIDERS:
-                            saved[insider_adj_key] = -50  # Olivia selling → expect basket down
-        insider_adj = saved.get(insider_adj_key, 0)
-
         basket_limit = self.get_limit(basket)
         basket_pos = self.get_position(basket, state)
         basket_od = state.order_depths[basket]
         basket_orders = []
         max_qty = 5  # optimal basket qty
 
-        # Adjust thresholds based on insider signal
-        sell_thr = entry_thr - max(0, insider_adj)  # lower sell threshold when insider buying
-        buy_thr = entry_thr - max(0, -insider_adj)   # lower buy threshold when insider selling
-
-        if deviation > sell_thr:
+        if deviation > entry_thr:
             # Basket expensive -> sell basket aggressively
             for bid_price in sorted(basket_od.buy_orders.keys(), reverse=True):
                 bid_vol = basket_od.buy_orders[bid_price]
@@ -394,7 +371,7 @@ class Trader:
                 if max_qty <= 0:
                     break
 
-        elif deviation < -buy_thr:
+        elif deviation < -entry_thr:
             # Basket cheap -> buy basket aggressively
             for ask_price in sorted(basket_od.sell_orders.keys()):
                 ask_vol = -basket_od.sell_orders[ask_price]
