@@ -56,8 +56,7 @@ FIXED_FAIR_VALUES = {
     "AMETHYSTS": 10000,
 }
 
-CONVERSION_PRODUCTS = {"ORCHIDS"}  # basic conversion arb
-MACARON_PRODUCTS = {"MAGNIFICENT_MACARONS"}  # sunlight-regime conversion
+CONVERSION_PRODUCTS = {"ORCHIDS"}  # MACARONS conversion loses money, disabled
 INSIDER_EXCLUDE = {"MAGNIFICENT_MACARONS", "ORCHIDS", "JAMS", "CHOCOLATE", "STRAWBERRIES"}  # Products where insider following loses money
 
 # Strategy parameters (agent tunes these)
@@ -185,8 +184,6 @@ class Trader:
             archetype = "option"
         elif product in CONVERSION_PRODUCTS:
             archetype = "conversion"
-        elif product in MACARON_PRODUCTS:
-            archetype = "macaron"
         elif product in BASKET_COMPONENTS:
             archetype = "component"  # don't trade independently
         elif product in OPTIONS_UNDERLYINGS:
@@ -698,79 +695,6 @@ class Trader:
         return orders, conversions
 
     # ----------------------------------------------------------
-    # Strategy: MACARONS Sunlight-Regime Conversion
-    # ----------------------------------------------------------
-    def macaron_trade(self, product: str, state: TradingState, saved: dict) -> tuple:
-        orders = []
-        conversions = 0
-
-        if product not in state.order_depths:
-            return orders, conversions
-
-        obs = state.observations
-        if obs is None or not hasattr(obs, 'conversionObservations') or obs.conversionObservations is None:
-            return orders, conversions
-        if product not in obs.conversionObservations:
-            return orders, conversions
-
-        conv = obs.conversionObservations[product]
-        od = state.order_depths[product]
-        limit = self.get_limit(product)
-        pos = self.get_position(product, state)
-
-        # Foreign market prices
-        ext_bid = conv.bidPrice
-        ext_ask = conv.askPrice
-        transport = conv.transportFees
-        export_tariff = conv.exportTariff
-        import_tariff = conv.importTariff
-
-        # Implied prices after fees
-        imp_buy_cost = ext_ask + transport + import_tariff   # cost to import
-        imp_sell_rev = ext_bid - transport - export_tariff   # revenue from export
-
-        # Sunlight regime detection
-        sun = 0
-        if hasattr(conv, 'sunlightIndex'):
-            sun = conv.sunlightIndex
-        elif hasattr(obs, 'plainValueObservations') and obs.plainValueObservations:
-            sun = obs.plainValueObservations.get("sunlightIndex", 0)
-
-        low_sun = sun < 2500  # threshold for low-sun regime
-
-        # Take arbitrage opportunities: sell locally above import cost
-        for bid_price in sorted(od.buy_orders.keys(), reverse=True):
-            if bid_price > imp_buy_cost + 1:
-                bid_vol = od.buy_orders[bid_price]
-                can_sell = limit + pos
-                qty = min(bid_vol, can_sell, 10)
-                if qty > 0:
-                    orders.append(Order(product, bid_price, -qty))
-                    pos -= qty
-            else:
-                break
-
-        # Buy locally below export revenue
-        for ask_price in sorted(od.sell_orders.keys()):
-            if ask_price < imp_sell_rev - 1:
-                ask_vol = -od.sell_orders[ask_price]
-                can_buy = limit - pos
-                qty = min(ask_vol, can_buy, 10)
-                if qty > 0:
-                    orders.append(Order(product, ask_price, qty))
-                    pos += qty
-            else:
-                break
-
-        # Convert toward zero (same logic as conversion_arb)
-        if pos < 0:
-            conversions = min(-pos, CONVERSION_MAX)
-        elif pos > 0:
-            conversions = -min(pos, CONVERSION_MAX)
-
-        return orders, conversions
-
-    # ----------------------------------------------------------
     # Insider Detection
     # ----------------------------------------------------------
     # Known insiders: map to products they're reliable on
@@ -989,11 +913,6 @@ class Trader:
                     conv_orders, conv_count = self.conversion_arb(product, state)
                     result[product] = conv_orders
                     conversions += conv_count
-
-                elif archetype == "macaron":
-                    mac_orders, mac_conv = self.macaron_trade(product, state, saved)
-                    result[product] = mac_orders
-                    conversions += mac_conv
 
                 # component, underlying, skip -> do nothing
 
