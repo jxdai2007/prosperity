@@ -1,3 +1,5 @@
+**NEVER STOP RUNNING THIS LOOP UNTIL EXPLICITLY TOLD TO DO SO.**
+
 # IMC Prosperity Autoresearch — P3+P2 Cross-Competition Training
 
 **Goal**: Build strategy archetypes that work on BOTH Prosperity 2 AND 3, proving they transfer to P4. The same `trader.py` handles both competitions via runtime product detection.

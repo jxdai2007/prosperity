@@ -30,10 +30,10 @@ def main():
     print(f"EXPERIMENT SUMMARY — {len(rows)} experiments")
     print("=" * 70)
 
-    keeps = [r for r in rows if r.get("status") == "keep"]
-    discards = [r for r in rows if r.get("status") == "discard"]
-    crashes_list = [r for r in rows if r.get("status") in ("crash",)]
-    baseline = [r for r in rows if r.get("status") == "baseline"]
+    keeps = [r for r in rows if r.get("status", "").upper() == "KEEP"]
+    discards = [r for r in rows if r.get("status", "").upper() == "DISCARD"]
+    crashes_list = [r for r in rows if r.get("status", "").upper() == "CRASH"]
+    baseline = [r for r in rows if r.get("status", "").upper() == "BASELINE"]
 
     total_exp = len(keeps) + len(discards) + len(crashes_list)
 
@@ -58,11 +58,17 @@ def main():
 
     # Per-archetype best scores
     print("\n--- Best Per-Archetype Scores ---")
-    for col, name in [("mm_profit", "Market Making (R1)"),
-                       ("statarb_profit", "Stat Arb (R2)"),
-                       ("options_profit", "Options (R3)"),
-                       ("full_profit", "Full (R5)"),
-                       ("stress_profit", "Stress (R5 worse)")]:
+    for col, name in [("p3_mm", "P3 Market Making (R1)"),
+                       ("p3_statarb", "P3 Stat Arb (R2)"),
+                       ("p3_options", "P3 Options (R3)"),
+                       ("p3_full", "P3 Full (R5)"),
+                       ("p3_stress", "P3 Stress (R5 worse)"),
+                       ("p3_hardmode", "P3 Hardmode (no fills)"),
+                       ("p3_oos", "P3 OOS (R6)"),
+                       ("p2_mm", "P2 Market Making"),
+                       ("p2_basket", "P2 Basket"),
+                       ("p2_options", "P2 Options"),
+                       ("p2_oos", "P2 OOS (R7)")]:
         best = None
         for r in rows:
             val = safe_int(r.get(col))
@@ -91,17 +97,18 @@ def main():
     for row in rows[-10:]:
         status = row.get("status", "?")
         composite = row.get("composite_score", "?")
-        crashes = row.get("crashes", "?")
+        p3_crashes = row.get("p3_crashes", "0")
+        p2_crashes = row.get("p2_crashes", "0")
         desc = row.get("description", "")[:50]
-        marker = "✓" if status == "keep" else "✗" if status == "discard" else "⚠" if "crash" in str(crashes) else "·"
-        print(f"  {marker} {status:<10} score={composite:>10}  crash={crashes}  {desc}")
+        marker = "✓" if status.upper() == "KEEP" else "✗" if status.upper() == "DISCARD" else "⚠" if status.upper() == "CRASH" else "·"
+        print(f"  {marker} {status:<10} score={composite:>10}  p3c={p3_crashes} p2c={p2_crashes}  {desc}")
 
     # Discards since last keep
     discards_since = 0
     for row in reversed(rows):
-        if row.get("status") == "keep":
+        if row.get("status", "").upper() == "KEEP":
             break
-        if row.get("status") in ("discard", "crash"):
+        if row.get("status", "").upper() in ("DISCARD", "CRASH"):
             discards_since += 1
 
     print(f"\nDiscards since last keep: {discards_since}")
@@ -113,8 +120,9 @@ def main():
     # Crash analysis
     crash_rounds = 0
     for r in rows[-5:]:
-        c = safe_int(r.get("crashes"))
-        if c and c > 0:
+        c3 = safe_int(r.get("p3_crashes")) or 0
+        c2 = safe_int(r.get("p2_crashes")) or 0
+        if c3 + c2 > 0:
             crash_rounds += 1
     if crash_rounds > 0:
         print(f"\n⚠ {crash_rounds}/5 recent experiments had crashes — FIX STABILITY FIRST")
