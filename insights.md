@@ -38,6 +38,17 @@
 - The premium mean-reverts naturally; exiting early gives up significant profit
 - Let positions ride and accumulate on new entries only
 
+## 9. COCONUT_COUPON: max_take=1 is optimal
+- Reducing max_take from 20 to 1 improved P2 options from 420k to 474k
+- Only taking the single best-priced contract per tick avoids adverse fills
+- The MM resting orders (spread=1%, qty=15) handle larger position building passively
+- This is counterintuitive but consistent: smaller takes = better average fills
+
+## 10. Basket entry threshold 25 with no exit is the sweet spot
+- Lowering basket entry from 50 to 25 dramatically improved both P3 and P2
+- Removing exit logic (let positions ride) was the key enabler — without it, low thresholds cause losses
+- The slow premium EMA (alpha=0.05) provides the structural mean, deviations > 25 are high-conviction
+
 ## 7. SQUID_INK profits come from insider (Olivia) signals
 - Despite being "skipped" as a product archetype, SQUID_INK makes +15k from Olivia following
 - The insider system trades it because archetype="skip" is in the insider follow list
