@@ -555,27 +555,9 @@ class Trader:
         pos = self.get_position(product, state)
         od = state.order_depths[product]
 
-        # Underlying momentum bias for P3 options
-        if underlying != "COCONUT":
-            u_ema_key = f"u_ema_{underlying}"
-            u_ema = saved.get(u_ema_key, S)
-            u_ema = 0.1 * S + 0.9 * u_ema  # slow EMA of underlying
-            saved[u_ema_key] = u_ema
-            momentum = (S - u_ema) / u_ema if u_ema > 0 else 0  # % deviation from EMA
-            # When underlying trends up, calls become more valuable → bias toward buying
-            # Scale edge threshold: +momentum favors buying (lower buy threshold, higher sell threshold)
-            momentum_adj = momentum * 50  # scale factor
-            buy_edge = edge_thr + momentum_adj   # harder to buy when underlying up (calls already up)
-            sell_edge = edge_thr - momentum_adj   # easier to sell when underlying up (take profit)
-            buy_edge = max(0.1, min(2.0, buy_edge))
-            sell_edge = max(0.1, min(2.0, sell_edge))
-        else:
-            buy_edge = edge_thr
-            sell_edge = edge_thr
-
         # Take mispriced orders aggressively
         max_take = 1 if underlying == "COCONUT" else limit  # P3: go big, unhedged
-        if edge > sell_edge:
+        if edge > edge_thr:
             # Option overpriced, sell
             for bid_price in sorted(od.buy_orders.keys(), reverse=True):
                 if bid_price > fair:
@@ -585,7 +567,7 @@ class Trader:
                     if qty > 0:
                         orders.append(Order(product, bid_price, -qty))
                         pos -= qty
-        elif edge < -buy_edge:
+        elif edge < -edge_thr:
             # Option underpriced, buy
             for ask_price in sorted(od.sell_orders.keys()):
                 if ask_price < fair:
