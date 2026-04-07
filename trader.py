@@ -343,9 +343,16 @@ class Trader:
 
         # Track premium std
         skey = f"basket_std_{basket}"
-        prev_std = saved.get(skey, 50.0)
+        prev_std = saved.get(skey, 80.0)
         ema_std = 0.05 * abs(premium - ema_prem) + 0.95 * prev_std
         saved[skey] = ema_std
+
+        # Warmup: need enough samples before trading
+        wkey = f"basket_warmup_{basket}"
+        warmup = saved.get(wkey, 0)
+        saved[wkey] = warmup + 1
+        if warmup < 20:
+            return all_orders
 
         deviation = premium - ema_prem
         entry_thr = max(BASKET_ENTRY_THRESHOLD, ema_std * 0.8)
