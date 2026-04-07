@@ -246,24 +246,35 @@ class Trader:
                     orders.append(Order(product, bid_price, -qty))
                     pos -= qty
 
-        # Resting orders at tight spread
-        buy_price = fair - MM_FIXED_SPREAD
-        sell_price = fair + MM_FIXED_SPREAD
-
+        # Resting orders at three levels: tight(1), medium(2), wide(3)
         buy_qty = limit - pos
         sell_qty = limit + pos
 
-        # Split qty between tight and wide levels
-        tight_frac = max(1, buy_qty // 2)
+        # Level 1: fair ± 1 (tightest, small qty)
+        l1_bq = max(1, buy_qty // 3)
+        l1_sq = max(1, sell_qty // 3)
         if buy_qty > 0:
-            orders.append(Order(product, int(buy_price), tight_frac))
-            if buy_qty - tight_frac > 0:
-                orders.append(Order(product, int(buy_price - 1), buy_qty - tight_frac))
-        tight_frac = max(1, sell_qty // 2)
+            orders.append(Order(product, int(fair - 1), l1_bq))
+            buy_qty -= l1_bq
         if sell_qty > 0:
-            orders.append(Order(product, int(sell_price), -tight_frac))
-            if sell_qty - tight_frac > 0:
-                orders.append(Order(product, int(sell_price + 1), -(sell_qty - tight_frac)))
+            orders.append(Order(product, int(fair + 1), -l1_sq))
+            sell_qty -= l1_sq
+
+        # Level 2: fair ± 2
+        l2_bq = max(1, buy_qty // 2) if buy_qty > 0 else 0
+        l2_sq = max(1, sell_qty // 2) if sell_qty > 0 else 0
+        if l2_bq > 0:
+            orders.append(Order(product, int(fair - 2), l2_bq))
+            buy_qty -= l2_bq
+        if l2_sq > 0:
+            orders.append(Order(product, int(fair + 2), -l2_sq))
+            sell_qty -= l2_sq
+
+        # Level 3: fair ± 3 (widest, remaining qty)
+        if buy_qty > 0:
+            orders.append(Order(product, int(fair - 3), buy_qty))
+        if sell_qty > 0:
+            orders.append(Order(product, int(fair + 3), -sell_qty))
 
         return orders
 
