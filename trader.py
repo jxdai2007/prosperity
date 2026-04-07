@@ -478,7 +478,7 @@ class Trader:
         # Reduce size near expiry (T < 2/365 = last ~2 days)
         if underlying == "COCONUT":
             max_take = 20
-        elif T < 2.0 / 365.0:
+        elif T < 4.0 / 365.0:
             # Near expiry: widen edge, reduce size — vol smile less reliable
             edge_thr = max(edge_thr, 2.0)
             max_take = 20
