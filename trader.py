@@ -457,7 +457,7 @@ class Trader:
         od = state.order_depths[product]
 
         # Take mispriced orders aggressively
-        max_take = 5 if underlying == "COCONUT" else limit  # P3: go big, unhedged
+        max_take = 3 if underlying == "COCONUT" else limit  # P3: go big, unhedged
         if edge > edge_thr:
             # Option overpriced, sell
             for bid_price in sorted(od.buy_orders.keys(), reverse=True):
