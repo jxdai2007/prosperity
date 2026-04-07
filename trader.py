@@ -86,6 +86,20 @@ def get_mid(od: OrderDepth) -> float:
         return 0.0
     return (max(od.buy_orders.keys()) + min(od.sell_orders.keys())) / 2.0
 
+def get_wmid(od: OrderDepth) -> float:
+    """Volume-weighted mid price using top of book"""
+    if not od.buy_orders or not od.sell_orders:
+        return get_mid(od)
+    best_bid = max(od.buy_orders.keys())
+    best_ask = min(od.sell_orders.keys())
+    bid_vol = od.buy_orders[best_bid]
+    ask_vol = -od.sell_orders[best_ask]
+    total = bid_vol + ask_vol
+    if total == 0:
+        return (best_bid + best_ask) / 2.0
+    # More volume on bid side → mid shifts toward ask (imbalance)
+    return (best_bid * ask_vol + best_ask * bid_vol) / total
+
 def get_best_bid(od: OrderDepth):
     if not od.buy_orders:
         return 0, 0
@@ -336,7 +350,7 @@ class Trader:
         # Calculate component fair value
         comp_fair = 0.0
         for c, weight in comp.items():
-            c_mid = get_mid(state.order_depths[c])
+            c_mid = get_wmid(state.order_depths[c])
             if c_mid == 0:
                 return all_orders
             comp_fair += weight * c_mid
