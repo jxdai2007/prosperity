@@ -182,7 +182,7 @@ class Trader:
         elif product in ("KELP", "STARFRUIT"):
             archetype = "dynamic"
         elif product in ("SQUID_INK",):
-            archetype = "dynamic"  # volatile but tradeable with mean-reversion
+            archetype = "skip"  # too volatile, skip for now
         else:
             archetype = "skip"
 
@@ -474,11 +474,11 @@ class Trader:
 
         # Market making around fair value
         if underlying == "COCONUT":
-            spread = max(3, int(fair * 0.008))
+            spread = max(2, int(fair * 0.005))
             max_mm_qty = 20
         else:
-            spread = max(2, int(fair * 0.01))
-            max_mm_qty = 15  # moderate MM for P3 options
+            spread = max(1, int(fair * 0.005))
+            max_mm_qty = 30  # aggressive MM for P3 options (limit=200)
         buy_price = int(round(fair - spread))
         sell_price = int(round(fair + spread))
 
