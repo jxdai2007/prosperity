@@ -141,6 +141,14 @@
 - 0.5 reduces adverse selection on ITM/ATM options with high vega
 - Low-vega threshold (0.8) has zero effect — all P3 options have high enough vega
 
+## 27. Order prioritization in position validation is a structural win (+4k composite)
+- Sort orders by profitability before clipping at position limits
+- Buys sorted by ascending price (cheapest first), sells by descending price
+- When multiple strategies generate orders for same product (taking + MM + insider),
+  the order matters for which survive clipping
+- Improved P3 MM by 6.4k and P2 MM by 5.5k — the cheapest buys and highest sells get priority
+- This is a free structural improvement that works across all products
+
 ## 26. P2 COCONUT_COUPON sigma=0.194 is a SHARP optimum
 - ±0.001 causes 20-46k drops, ±0.004 causes 200k+ drops
 - Never tune this without extreme precision — it's the most sensitive parameter
