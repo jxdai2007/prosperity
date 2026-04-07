@@ -613,6 +613,22 @@ class Trader:
             sell_price = int(fair) + 1
         buy_qty = min(limit - pos, max_mm_qty)
         sell_qty = min(limit + pos, max_mm_qty)
+
+        # Penny-stepping for options: place 1 tick inside best bid/ask
+        opt_best_bid, _ = get_best_bid(od)
+        opt_best_ask, _ = get_best_ask(od)
+        if opt_best_bid > 0 and opt_best_ask > 0:
+            penny_buy = opt_best_bid + 1
+            penny_sell = opt_best_ask - 1
+            if penny_buy < int(fair) and penny_buy > buy_price and buy_qty > 1:
+                pq = buy_qty // 3
+                orders.append(Order(product, penny_buy, pq))
+                buy_qty -= pq
+            if penny_sell > int(fair) and penny_sell < sell_price and sell_qty > 1:
+                pq = sell_qty // 3
+                orders.append(Order(product, penny_sell, -pq))
+                sell_qty -= pq
+
         if buy_qty > 0 and buy_price > 0:
             orders.append(Order(product, buy_price, buy_qty))
         if sell_qty > 0 and sell_price > 0:
