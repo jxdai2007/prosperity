@@ -56,7 +56,7 @@ FIXED_FAIR_VALUES = {
     "AMETHYSTS": 10000,
 }
 
-CONVERSION_PRODUCTS = {"ORCHIDS"}  # MACARONS conversion loses money, disabled
+CONVERSION_PRODUCTS = {"MAGNIFICENT_MACARONS", "ORCHIDS"}
 INSIDER_EXCLUDE = {"MAGNIFICENT_MACARONS", "ORCHIDS", "JAMS", "CHOCOLATE", "STRAWBERRIES"}  # Products where insider following loses money
 
 # Strategy parameters (agent tunes these)
@@ -541,9 +541,11 @@ class Trader:
     # ----------------------------------------------------------
     # Strategy: Conversion Arbitrage
     # ----------------------------------------------------------
-    def conversion_arb(self, product: str, state: TradingState) -> tuple:
+    def conversion_arb(self, product: str, state: TradingState, saved: dict = None) -> tuple:
         orders = []
         conversions = 0
+        if saved is None:
+            saved = {}
 
         if product not in state.order_depths:
             return orders, conversions
@@ -567,42 +569,73 @@ class Trader:
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
 
-        ext_buy_cost = ext_ask + transport + import_tariff
-        ext_sell_rev = ext_bid - transport - export_tariff
+        # Frankfurt approach: calculate arb with local price targets
+        local_sell_price = int(math.floor(ext_bid + 0.5))
+        local_buy_price = int(math.ceil(ext_ask - 0.5))
 
-        # Sell locally if price > external buy cost (import arb)
-        for bid_price in sorted(od.buy_orders.keys(), reverse=True):
-            if bid_price > ext_buy_cost + 1:
-                bid_vol = od.buy_orders[bid_price]
-                can_sell = limit + pos
-                qty = min(bid_vol, can_sell)
-                if qty > 0:
-                    orders.append(Order(product, bid_price, -qty))
-                    pos -= qty
-            else:
-                break
+        ext_buy_cost = ext_ask + import_tariff + transport
+        ext_sell_rev = ext_bid - export_tariff - transport
 
-        # Buy locally if price < external sell revenue (export arb)
-        for ask_price in sorted(od.sell_orders.keys()):
-            if ask_price < ext_sell_rev - 1:
-                ask_vol = -od.sell_orders[ask_price]
-                can_buy = limit - pos
-                qty = min(ask_vol, can_buy)
-                if qty > 0:
-                    orders.append(Order(product, ask_price, qty))
-                    pos += qty
-            else:
-                break
+        short_arb = round(local_sell_price - ext_buy_cost, 1)
+        long_arb = round(ext_sell_rev - local_buy_price - 0.1, 1)
 
-        # Convert position back toward zero
-        new_pos = pos
-        for o in orders:
-            new_pos += o.quantity
+        # Track arb history (10-sample window)
+        sa_key = f"conv_sa_{product}"
+        la_key = f"conv_la_{product}"
+        sa_hist = saved.get(sa_key, [])
+        la_hist = saved.get(la_key, [])
+        if len(sa_hist) > 10:
+            sa_hist.pop(0)
+            la_hist.pop(0)
+        sa_hist.append(short_arb)
+        la_hist.append(long_arb)
+        saved[sa_key] = sa_hist
+        saved[la_key] = la_hist
 
-        if new_pos < 0:
-            conversions = min(-new_pos, CONVERSION_MAX)
-        elif new_pos > 0:
-            conversions = -min(new_pos, CONVERSION_MAX)
+        mean_sa = sum(sa_hist) / len(sa_hist) if sa_hist else 0
+        mean_la = sum(la_hist) / len(la_hist) if la_hist else 0
+
+        remaining = CONVERSION_MAX
+
+        if short_arb > long_arb:
+            if short_arb >= 0 and mean_sa > 0:
+                # Sell locally at good prices
+                for bid_price in sorted(od.buy_orders.keys(), reverse=True):
+                    bid_vol = od.buy_orders[bid_price]
+                    # Only take if captures at least 58% of arb
+                    if short_arb > 0 and (short_arb - (local_sell_price - bid_price)) > 0.58 * short_arb:
+                        can_sell = min(bid_vol, limit + pos, remaining)
+                        if can_sell > 0:
+                            orders.append(Order(product, bid_price, -can_sell))
+                            pos -= can_sell
+                            remaining -= can_sell
+                    else:
+                        break
+                # Place resting sell at local_sell_price for remainder
+                if remaining > 0:
+                    can_sell = min(limit + pos, remaining)
+                    if can_sell > 0:
+                        orders.append(Order(product, local_sell_price, -can_sell))
+        else:
+            if long_arb >= 0 and mean_la > 0:
+                # Buy locally at good prices
+                for ask_price in sorted(od.sell_orders.keys()):
+                    ask_vol = -od.sell_orders[ask_price]
+                    if long_arb > 0 and (long_arb - (ask_price - local_buy_price)) > 0.58 * long_arb:
+                        can_buy = min(ask_vol, limit - pos, remaining)
+                        if can_buy > 0:
+                            orders.append(Order(product, ask_price, can_buy))
+                            pos += can_buy
+                            remaining -= can_buy
+                    else:
+                        break
+                if remaining > 0:
+                    can_buy = min(limit - pos, remaining)
+                    if can_buy > 0:
+                        orders.append(Order(product, local_buy_price, can_buy))
+
+        # Always convert position back toward zero
+        conversions = max(min(-pos, CONVERSION_MAX), -CONVERSION_MAX)
 
         return orders, conversions
 
@@ -817,7 +850,7 @@ class Trader:
                     result[product] = self.options_trade(product, state, saved)
 
                 elif archetype == "conversion":
-                    conv_orders, conv_count = self.conversion_arb(product, state)
+                    conv_orders, conv_count = self.conversion_arb(product, state, saved)
                     result[product] = conv_orders
                     conversions += conv_count
 
