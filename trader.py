@@ -546,7 +546,7 @@ class Trader:
             spread = max(1, int(fair * 0.01))
             max_mm_qty = 25
         # Position skew: shift MM prices to reduce inventory
-        pos_skew = -pos / limit * spread * 0.5 if limit > 0 else 0
+        pos_skew = -pos / limit * spread * 0.8 if limit > 0 else 0
         buy_price = int(round(fair - spread + pos_skew))
         sell_price = int(round(fair + spread + pos_skew))
         if buy_price >= sell_price:
