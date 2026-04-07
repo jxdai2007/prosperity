@@ -639,7 +639,6 @@ class Trader:
     # Product-specific insiders (only follow on these specific products)
     PRODUCT_INSIDERS = {
         "ROSES": {"Rhianna", "Rihanna"},
-        "CHOCOLATE": {"Vladimir", "Remy"},
     }
 
     def detect_insider(self, state: TradingState, saved: dict) -> dict:
