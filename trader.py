@@ -336,13 +336,20 @@ class Trader:
 
         premium = basket_mid - comp_fair
 
-        # Track premium EMA (slow, for mean)
+        # Track premium with running mean (Frankfurt approach — converges to true structural premium)
         pkey = f"basket_prem_{basket}"
-        prev_prem = saved.get(pkey, premium)
-        ema_prem = 0.05 * premium + 0.95 * prev_prem
-        saved[pkey] = ema_prem
+        nkey = f"basket_n_{basket}"
+        n = saved.get(nkey, 0) + 1
+        saved[nkey] = n
+        if n == 1:
+            saved[pkey] = premium
+        else:
+            # Online mean update, capped denominator for stability
+            denom = min(n, 500)
+            saved[pkey] = saved.get(pkey, premium) + (premium - saved.get(pkey, premium)) / denom
+        mean_prem = saved[pkey]
 
-        deviation = premium - ema_prem
+        deviation = premium - mean_prem
         entry_thr = BASKET_ENTRY_THRESHOLD
 
         basket_limit = self.get_limit(basket)
