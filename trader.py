@@ -335,10 +335,10 @@ class Trader:
 
         premium = basket_mid - comp_fair
 
-        # Track premium EMA
+        # Track premium EMA (slow, for mean)
         pkey = f"basket_prem_{basket}"
         prev_prem = saved.get(pkey, premium)
-        ema_prem = 0.1 * premium + 0.9 * prev_prem
+        ema_prem = 0.05 * premium + 0.95 * prev_prem
         saved[pkey] = ema_prem
 
         # Track premium std
@@ -348,31 +348,56 @@ class Trader:
         saved[skey] = ema_std
 
         deviation = premium - ema_prem
-        threshold = max(BASKET_ENTRY_THRESHOLD, ema_std * 1.0)
+        entry_thr = max(BASKET_ENTRY_THRESHOLD, ema_std * 0.8)
+        exit_thr = BASKET_EXIT_THRESHOLD
 
         basket_limit = self.get_limit(basket)
         basket_pos = self.get_position(basket, state)
         basket_od = state.order_depths[basket]
         basket_orders = []
+        max_qty = 15  # much more aggressive than old qty=3
 
-        if deviation > threshold:
-            # Basket expensive -> sell basket
-            best_bid, best_bid_vol = get_best_bid(basket_od)
-            if best_bid > 0:
+        if deviation > entry_thr:
+            # Basket expensive -> sell basket aggressively
+            for bid_price in sorted(basket_od.buy_orders.keys(), reverse=True):
+                bid_vol = basket_od.buy_orders[bid_price]
                 can_sell = basket_limit + basket_pos
-                qty = min(best_bid_vol, can_sell, 3)
+                qty = min(bid_vol, can_sell, max_qty)
                 if qty > 0:
-                    basket_orders.append(Order(basket, best_bid, -qty))
+                    basket_orders.append(Order(basket, bid_price, -qty))
+                    basket_pos -= qty
+                    max_qty -= qty
+                if max_qty <= 0:
+                    break
 
-        elif deviation < -threshold:
-            # Basket cheap -> buy basket
-            best_ask, best_ask_vol = get_best_ask(basket_od)
-            if best_ask > 0:
+        elif deviation < -entry_thr:
+            # Basket cheap -> buy basket aggressively
+            for ask_price in sorted(basket_od.sell_orders.keys()):
+                ask_vol = -basket_od.sell_orders[ask_price]
                 can_buy = basket_limit - basket_pos
-                ask_vol = -best_ask_vol
-                qty = min(ask_vol, can_buy, 3)
+                qty = min(ask_vol, can_buy, max_qty)
                 if qty > 0:
-                    basket_orders.append(Order(basket, best_ask, qty))
+                    basket_orders.append(Order(basket, ask_price, qty))
+                    basket_pos += qty
+                    max_qty -= qty
+                if max_qty <= 0:
+                    break
+
+        elif abs(deviation) < exit_thr and basket_pos != 0:
+            # Mean reversion: exit position when premium normalizes
+            if basket_pos > 0:
+                best_bid, best_bid_vol = get_best_bid(basket_od)
+                if best_bid > 0:
+                    qty = min(best_bid_vol, basket_pos, 10)
+                    if qty > 0:
+                        basket_orders.append(Order(basket, best_bid, -qty))
+            elif basket_pos < 0:
+                best_ask, best_ask_vol = get_best_ask(basket_od)
+                if best_ask > 0:
+                    ask_vol = -best_ask_vol
+                    qty = min(ask_vol, -basket_pos, 10)
+                    if qty > 0:
+                        basket_orders.append(Order(basket, best_ask, qty))
 
         if basket_orders:
             all_orders[basket] = basket_orders
@@ -736,11 +761,11 @@ class Trader:
                 if product not in result:
                     result[product] = []
 
-        # Apply insider signals to dynamic products only
+        # Apply insider signals to tradeable products
         for product, (direction, confidence) in insider_signals.items():
             if product in state.order_depths:
                 archetype = self.classify_product(product)
-                if archetype == "dynamic":
+                if archetype in ("dynamic", "component", "skip"):
                     try:
                         insider_orders = self.apply_insider(product, direction, confidence, state)
                         if insider_orders:
