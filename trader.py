@@ -611,11 +611,8 @@ class Trader:
         if buy_price >= sell_price:
             buy_price = int(fair) - 1
             sell_price = int(fair) + 1
-        # Position-aware qty: more aggressive when flat, less when stretched
-        pos_ratio = abs(pos) / limit if limit > 0 else 0
-        adj_mm_qty = max(5, int(max_mm_qty * (1.0 - 0.5 * pos_ratio)))
-        buy_qty = min(limit - pos, adj_mm_qty)
-        sell_qty = min(limit + pos, adj_mm_qty)
+        buy_qty = min(limit - pos, max_mm_qty)
+        sell_qty = min(limit + pos, max_mm_qty)
 
         # Penny-stepping for P3 options only (hurts P2 COCONUT_COUPON)
         opt_best_bid, _ = get_best_bid(od)
