@@ -499,9 +499,9 @@ class Trader:
         # Take mispriced orders aggressively
         max_take = 1 if underlying == "COCONUT" else limit  # P3: go big, unhedged
         if edge > edge_thr:
-            # Option overpriced, sell
+            # Option overpriced, sell at or above fair
             for bid_price in sorted(od.buy_orders.keys(), reverse=True):
-                if bid_price > fair:
+                if bid_price >= int(round(fair)):
                     bid_vol = od.buy_orders[bid_price]
                     can_sell = limit + pos
                     qty = min(bid_vol, can_sell, max_take)
@@ -509,9 +509,9 @@ class Trader:
                         orders.append(Order(product, bid_price, -qty))
                         pos -= qty
         elif edge < -edge_thr:
-            # Option underpriced, buy
+            # Option underpriced, buy at or below fair
             for ask_price in sorted(od.sell_orders.keys()):
-                if ask_price < fair:
+                if ask_price <= int(round(fair)):
                     ask_vol = -od.sell_orders[ask_price]
                     can_buy = limit - pos
                     qty = min(ask_vol, can_buy, max_take)
