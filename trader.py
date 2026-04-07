@@ -456,19 +456,10 @@ class Trader:
 
         # Calculate implied vol / fair value
         if underlying == "COCONUT":
-            # P2: compute IV from market, track running mean for fair pricing
-            market_iv = implied_vol(option_mid, S, strike, T, initial_guess=0.194)
-            ivkey = f"coco_iv_{product}"
-            ivnkey = f"coco_iv_n_{product}"
-            ivn = saved.get(ivnkey, 0) + 1
-            saved[ivnkey] = ivn
-            if ivn == 1:
-                saved[ivkey] = market_iv
-            else:
-                saved[ivkey] = saved.get(ivkey, market_iv) + (market_iv - saved.get(ivkey, market_iv)) / ivn
-            mean_iv = saved[ivkey]
-            fair = bs_call_price(S, strike, T, mean_iv)
-            edge_thr = 2.0
+            # P2: use fixed sigma for stable pricing
+            fixed_sigma = 0.194
+            fair = bs_call_price(S, strike, T, fixed_sigma)
+            edge_thr = 2.0  # edge for P2 coconut coupon
         else:
             # P3: use fitted vol smile (FrankfurtHedgehogs approach)
             # coeffs from fitted volatility smile: IV = f(log(K/S)/sqrt(T))
