@@ -385,7 +385,7 @@ class Trader:
                     break
 
         # Also place resting orders at entry threshold price (capture deviations)
-        if not basket_orders:
+        if True:
             rest_price_buy = int(round(comp_fair + mean_prem - entry_thr))
             rest_price_sell = int(round(comp_fair + mean_prem + entry_thr))
             can_buy = basket_limit - basket_pos
