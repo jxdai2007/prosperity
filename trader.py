@@ -62,7 +62,7 @@ INSIDER_EXCLUDE = {"MAGNIFICENT_MACARONS", "ORCHIDS", "JAMS", "CHOCOLATE", "STRA
 # Strategy parameters (agent tunes these)
 MM_FIXED_SPREAD = 2          # half-spread for fixed-value market making
 MM_DYNAMIC_SPREAD = 2        # half-spread for dynamic market making
-MM_DYNAMIC_EMA_ALPHA = 0.2   # EMA smoothing for dynamic fair value
+MM_DYNAMIC_EMA_ALPHA = 0.15  # EMA smoothing for dynamic fair value
 BASKET_ENTRY_THRESHOLD = 50  # premium deviation to enter basket arb
 BASKET_EXIT_THRESHOLD = 10   # premium deviation to exit
 OPTIONS_EDGE_THRESHOLD = 4.0 # min edge to trade options
