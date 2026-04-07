@@ -57,7 +57,7 @@ FIXED_FAIR_VALUES = {
 }
 
 CONVERSION_PRODUCTS = {"ORCHIDS"}  # MACARONS conversion loses money, disabled
-INSIDER_EXCLUDE = {"MAGNIFICENT_MACARONS", "ORCHIDS", "JAMS", "CHOCOLATE", "STRAWBERRIES"}  # Products where generic insider loses money
+INSIDER_EXCLUDE = {"MAGNIFICENT_MACARONS", "ORCHIDS", "JAMS", "CHOCOLATE", "STRAWBERRIES"}  # Products where insider following loses money
 
 # Strategy parameters (agent tunes these)
 MM_FIXED_SPREAD = 2          # half-spread for fixed-value market making
@@ -657,13 +657,12 @@ class Trader:
                     if buyer == "SUBMISSION" or seller == "SUBMISSION":
                         continue
                     # Known insiders: follow immediately
-                    is_known = buyer in self.KNOWN_INSIDERS or buyer in product_insiders
-                    if is_known:
-                        signals[product] = (1, 0.9, True)  # high confidence buy, known=True
-                    else:
-                        is_known = seller in self.KNOWN_INSIDERS or seller in product_insiders
-                        if is_known:
-                            signals[product] = (-1, 0.9, True)  # high confidence sell, known=True
+                    if buyer in self.KNOWN_INSIDERS or buyer in product_insiders:
+                        if product not in signals or True:
+                            signals[product] = (1, 0.9)  # high confidence buy
+                    elif seller in self.KNOWN_INSIDERS or seller in product_insiders:
+                        if product not in signals or True:
+                            signals[product] = (-1, 0.9)  # high confidence sell
         insider_data = saved.get("insider", {})
 
         # Score previous predictions
@@ -728,7 +727,7 @@ class Trader:
                         if last:
                             if product not in signals or accuracy > signals[product][1]:
                                 direction = 1 if last == "b" else -1
-                                signals[product] = (direction, accuracy, False)  # behavioral, not known
+                                signals[product] = (direction, accuracy)
 
         # Limit size
         if len(insider_data) > 80:
@@ -858,13 +857,10 @@ class Trader:
                     result[product] = []
 
         # Apply insider signals to tradeable products
-        for product, signal in insider_signals.items():
-            direction, confidence = signal[0], signal[1]
-            is_known = signal[2] if len(signal) > 2 else False
+        for product, (direction, confidence) in insider_signals.items():
             if product in state.order_depths:
                 archetype = self.classify_product(product)
-                # Known insiders bypass exclusion list; generic insiders respect it
-                if archetype in ("dynamic", "component", "skip") and (is_known or product not in INSIDER_EXCLUDE):
+                if archetype in ("dynamic", "component", "skip") and product not in INSIDER_EXCLUDE:
                     try:
                         insider_orders = self.apply_insider(product, direction, confidence, state)
                         if insider_orders:
