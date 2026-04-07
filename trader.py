@@ -585,7 +585,7 @@ class Trader:
         else:
             # P3 options: MM with mean-edge-adjusted fair (accurate pricing)
             spread = max(1, int(fair * 0.01))
-            max_mm_qty = 25
+            max_mm_qty = 40
         # Position skew: shift MM prices to reduce inventory
         skew_factor = 0.9 if underlying != "COCONUT" else 0.5
         pos_skew = -pos / limit * spread * skew_factor if limit > 0 else 0
