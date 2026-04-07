@@ -102,4 +102,45 @@
 ## 7. SQUID_INK profits come from insider (Olivia) signals
 - Despite being "skipped" as a product archetype, SQUID_INK makes +15k from Olivia following
 - The insider system trades it because archetype="skip" is in the insider follow list
-- Direct mean-reversion trading SQUID_INK loses money (-8k in R1)
+- Direct mean-reversion trading SQUID_INK loses money (-30k in R1, -130k in R5)
+
+## 19. Vol smile base IV was STILL underestimated after first calibration
+- Original +0.016 offset brought base IV to 0.165, but optimal is +0.027 (base = 0.176)
+- With mean-edge adjustment, higher base IV + running mean correction captures market vol better
+- This improved P3 options from 632k to 836k, P3 full from 933k to 1.09M
+- The improvement held on OOS (32k → 34k), confirming not overfit
+
+## 20. Vol smile quadratic coefficient overestimated
+- Original Frankfurt coefficient 0.274 was too steep — options at extreme strikes overpriced
+- Optimal quadratic is 0.18 (34% lower), giving a flatter smile
+- This improved P3 full from 1.04M to 1.09M, hardmode crossed 1M
+- The interaction with mean-edge is key: flatter smile + running mean correction = better pricing
+
+## 21. Options MM inventory skew 0.9 is optimal (not 0.5)
+- Higher skew (0.9) means MM prices shift more aggressively against inventory
+- This reduces time spent at large positions (which are expensive near expiry)
+- Must be P3-specific: P2 COCONUT_COUPON is optimal at 0.5 (different dynamics)
+
+## 22. P2 GIFT_BASKET threshold=50 (vs P3=35)
+- P2 and P3 baskets have different premium dynamics
+- GIFT_BASKET (4C+6S+1R) has wider premium swings → higher threshold reduces false entries
+- Per-basket thresholds add +14k to P2 basket with zero P3 impact
+
+## 23. Component leg trading DESTROYS basket arb
+- Buying/selling components alongside basket arb lost 150-180k
+- Components don't move inverse to basket premium — the premium is structural
+- Frankfurt's 50% hedge worked in their framework but not ours (different position management)
+
+## 24. MACARONS conversion still loses money
+- The Frankfurt "taker bot at int(externalBid + 0.5)" approach lost money in backtester
+- Conversion costs (transport + tariffs) exceed any achievable sell price
+- Keep MACARONS disabled
+
+## 25. Options edge threshold: 0.5 is optimal for high-vega strikes
+- Was 0.3 (too aggressive, taking marginally mispriced options)
+- 0.5 reduces adverse selection on ITM/ATM options with high vega
+- Low-vega threshold (0.8) has zero effect — all P3 options have high enough vega
+
+## 26. P2 COCONUT_COUPON sigma=0.194 is a SHARP optimum
+- ±0.001 causes 20-46k drops, ±0.004 causes 200k+ drops
+- Never tune this without extreme precision — it's the most sensitive parameter
