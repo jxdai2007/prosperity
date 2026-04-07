@@ -525,7 +525,7 @@ class Trader:
             max_mm_qty = 15
         else:
             # P3 options: MM with mean-edge-adjusted fair (accurate pricing)
-            spread = max(1, int(fair * 0.0075))
+            spread = max(1, int(fair * 0.015))
             max_mm_qty = 25
         buy_price = int(round(fair - spread))
         sell_price = int(round(fair + spread))
