@@ -656,7 +656,7 @@ class Trader:
                 orders.append(Order(product, wide_sell, -wide_sell_qty))
 
             # Third level: very wide (3%) to capture extreme moves
-            vwide_spread = max(4, int(fair * 0.03))
+            vwide_spread = max(5, int(fair * 0.04))
             vwide_buy = int(round(fair - vwide_spread + pos_skew))
             vwide_sell = int(round(fair + vwide_spread + pos_skew))
             vwide_qty = min(limit - pos - buy_qty - wide_qty, max_mm_qty)
