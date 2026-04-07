@@ -444,7 +444,7 @@ class Trader:
             fair = bs_call_price(S, strike, T, vol_smile_iv)
             # Dynamic edge threshold: widen for low-vega options (Frankfurt approach)
             vega = bs_vega(S, strike, T, vol_smile_iv)
-            edge_thr = 0.2 if vega > 1.0 else 0.6
+            edge_thr = 0.3 if vega > 1.0 else 0.8
 
         if fair <= 0.5:
             return orders
