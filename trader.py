@@ -391,9 +391,9 @@ class Trader:
             can_buy = basket_limit - basket_pos
             can_sell = basket_limit + basket_pos
             if can_buy > 0 and rest_price_buy > 0:
-                basket_orders.append(Order(basket, rest_price_buy, min(can_buy, 5)))
+                basket_orders.append(Order(basket, rest_price_buy, min(can_buy, 10)))
             if can_sell > 0 and rest_price_sell > 0:
-                basket_orders.append(Order(basket, rest_price_sell, -min(can_sell, 5)))
+                basket_orders.append(Order(basket, rest_price_sell, -min(can_sell, 10)))
 
         if basket_orders:
             all_orders[basket] = basket_orders
