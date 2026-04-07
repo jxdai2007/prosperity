@@ -402,6 +402,47 @@ class Trader:
         if basket_orders:
             all_orders[basket] = basket_orders
 
+            # Component hedging: trade components in opposite direction
+            # When selling basket, buy components; when buying basket, sell components
+            basket_trade_qty = sum(o.quantity for o in basket_orders)
+            if basket_trade_qty != 0:
+                hedge_dir = -1 if basket_trade_qty > 0 else 1  # opposite of basket
+                hedge_qty_mult = abs(basket_trade_qty)
+                for c, weight in comp.items():
+                    if c not in state.order_depths:
+                        continue
+                    c_od = state.order_depths[c]
+                    c_limit = self.get_limit(c)
+                    c_pos = self.get_position(c, state)
+                    c_target = int(weight * hedge_qty_mult * 0.5)  # 50% hedge
+                    c_orders = []
+                    if hedge_dir > 0:
+                        # Buy components
+                        for ask_price in sorted(c_od.sell_orders.keys()):
+                            ask_vol = -c_od.sell_orders[ask_price]
+                            can_buy = c_limit - c_pos
+                            qty = min(ask_vol, can_buy, c_target)
+                            if qty > 0:
+                                c_orders.append(Order(c, ask_price, qty))
+                                c_target -= qty
+                            if c_target <= 0:
+                                break
+                    else:
+                        # Sell components
+                        for bid_price in sorted(c_od.buy_orders.keys(), reverse=True):
+                            bid_vol = c_od.buy_orders[bid_price]
+                            can_sell = c_limit + c_pos
+                            qty = min(bid_vol, can_sell, c_target)
+                            if qty > 0:
+                                c_orders.append(Order(c, bid_price, -qty))
+                                c_target -= qty
+                            if c_target <= 0:
+                                break
+                    if c_orders:
+                        if c not in all_orders:
+                            all_orders[c] = []
+                        all_orders[c].extend(c_orders)
+
         return all_orders
 
     # ----------------------------------------------------------
