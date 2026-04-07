@@ -504,8 +504,8 @@ class Trader:
             spread = max(3, int(fair * 0.01))
             max_mm_qty = 15
         else:
-            # P3 options: wide spread MM to avoid adverse selection
-            spread = max(3, int(fair * 0.015))
+            # P3 options: moderate spread MM
+            spread = max(2, int(fair * 0.005))
             max_mm_qty = 10
         buy_price = int(round(fair - spread))
         sell_price = int(round(fair + spread))
