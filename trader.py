@@ -60,7 +60,7 @@ CONVERSION_PRODUCTS = {"MAGNIFICENT_MACARONS", "ORCHIDS"}
 
 # Strategy parameters (agent tunes these)
 MM_FIXED_SPREAD = 2          # half-spread for fixed-value market making
-MM_DYNAMIC_SPREAD = 1        # half-spread for dynamic market making
+MM_DYNAMIC_SPREAD = 2        # half-spread for dynamic market making
 MM_DYNAMIC_EMA_ALPHA = 0.3   # EMA smoothing for dynamic fair value
 BASKET_ENTRY_THRESHOLD = 50  # premium deviation to enter basket arb
 BASKET_EXIT_THRESHOLD = 10   # premium deviation to exit
@@ -265,7 +265,7 @@ class Trader:
         fair = ema
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
-        spread = MM_DYNAMIC_SPREAD
+        spread = 1 if product == "KELP" else MM_DYNAMIC_SPREAD
 
         # Take mispriced orders
         for ask_price in sorted(od.sell_orders.keys()):
