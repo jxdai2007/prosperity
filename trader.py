@@ -288,37 +288,7 @@ class Trader:
         saved[key] = ema
         self.ema[product] = ema
 
-        # Order flow imbalance (OFI) signal
-        best_bid, bid_vol = get_best_bid(od)
-        best_ask, ask_vol_raw = get_best_ask(od)
-        ask_vol = -ask_vol_raw if ask_vol_raw < 0 else ask_vol_raw
-        pbk = f"pb_{product}"
-        pak = f"pa_{product}"
-        pbvk = f"pbv_{product}"
-        pavk = f"pav_{product}"
-        prev_bid = saved.get(pbk, best_bid)
-        prev_ask = saved.get(pak, best_ask)
-        prev_bv = saved.get(pbvk, bid_vol)
-        prev_av = saved.get(pavk, ask_vol)
-        ofi = 0
-        if best_bid >= prev_bid:
-            ofi += bid_vol - (prev_bv if best_bid == prev_bid else 0)
-        else:
-            ofi -= prev_bv
-        if best_ask <= prev_ask:
-            ofi -= ask_vol - (prev_av if best_ask == prev_ask else 0)
-        else:
-            ofi += prev_av
-        saved[pbk] = best_bid
-        saved[pak] = best_ask
-        saved[pbvk] = bid_vol
-        saved[pavk] = ask_vol
-        # Decaying cumulative OFI
-        ofik = f"ofi_{product}"
-        cum_ofi = saved.get(ofik, 0) * 0.9 + ofi
-        saved[ofik] = cum_ofi
-
-        fair = ema + cum_ofi * 0.02  # OFI adjustment
+        fair = ema
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
         spread = 1 if product == "KELP" else MM_DYNAMIC_SPREAD
