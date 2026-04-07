@@ -417,7 +417,13 @@ class Trader:
         mean_prem = saved[pkey]
 
         deviation = premium - mean_prem
-        entry_thr = 50 if basket == "GIFT_BASKET" else BASKET_ENTRY_THRESHOLD
+        # Per-basket thresholds
+        if basket == "GIFT_BASKET":
+            entry_thr = 50
+        elif basket == "PICNIC_BASKET2":
+            entry_thr = 45  # PB2 has tighter premium dynamics
+        else:
+            entry_thr = BASKET_ENTRY_THRESHOLD  # PB1: 35
 
         basket_limit = self.get_limit(basket)
         basket_pos = self.get_position(basket, state)
