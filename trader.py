@@ -68,8 +68,8 @@ BASKET_THRESHOLDS = {
     # P3 baskets: higher thresholds, wider structural premium variation
     "PICNIC_BASKET1": {"entry": 60, "exit": 15},
     "PICNIC_BASKET2": {"entry": 60, "exit": 15},
-    # P2 basket: historically stable premium, can be tighter
-    "GIFT_BASKET": {"entry": 40, "exit": 10},
+    # P2 basket: keep conservative
+    "GIFT_BASKET": {"entry": 50, "exit": 10},
 }
 OPTIONS_EDGE_THRESHOLD = 4.0 # min edge to trade options
 INSIDER_THRESHOLD = 0.55     # accuracy threshold to follow an insider
