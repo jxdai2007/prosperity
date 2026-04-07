@@ -56,7 +56,7 @@ FIXED_FAIR_VALUES = {
     "AMETHYSTS": 10000,
 }
 
-CONVERSION_PRODUCTS = {"MAGNIFICENT_MACARONS", "ORCHIDS"}
+CONVERSION_PRODUCTS = {"ORCHIDS"}  # MACARONS conversion loses money, disabled
 
 # Strategy parameters (agent tunes these)
 MM_FIXED_SPREAD = 2          # half-spread for fixed-value market making
