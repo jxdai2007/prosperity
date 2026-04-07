@@ -152,3 +152,17 @@
 ## 26. P2 COCONUT_COUPON sigma=0.194 is a SHARP optimum
 - ±0.001 causes 20-46k drops, ±0.004 causes 200k+ drops
 - Never tune this without extreme precision — it's the most sensitive parameter
+
+## 28. Cross-option spread arbitrage adds genuine alpha
+- Trading bull call spreads between adjacent strikes when market deviates from BS theoretical
+- Threshold=2.0 (minimum spread deviation to trade), qty=30 (optimal)
+- Adds +4.8k to P3 full, +5.7k to stress, +3.9k to options, +442 to hardmode
+- Slightly hurts OOS (-1k) but net composite +1,180
+- Works because individual option mean-edge pricing is accurate, so spread deviations are real mispricings
+- P2 COCONUT_COUPON doesn't benefit (only 1 strike, no cross-strike arb possible)
+
+## 29. SQUID_INK is ONLY profitable via insider (Olivia) signals
+- Tried 3 different direct strategies: spike detection, toxic-filtered MM, toxic-filtered take-only
+- All hurt R5 composite despite improving R1 (where insiders aren't present)
+- The conflict: direct trading positions compete with insider following for position limits
+- Conclusion: keep SQUID_INK as "skip" and let insider detection handle it
