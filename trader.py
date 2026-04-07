@@ -475,15 +475,7 @@ class Trader:
         od = state.order_depths[product]
 
         # Take mispriced orders aggressively
-        # Reduce size near expiry (T < 2/365 = last ~2 days)
-        if underlying == "COCONUT":
-            max_take = 20
-        elif T < 4.0 / 365.0:
-            # Near expiry: widen edge, reduce size — vol smile less reliable
-            edge_thr = max(edge_thr, 2.0)
-            max_take = 20
-        else:
-            max_take = limit  # P3: go big, unhedged
+        max_take = 20 if underlying == "COCONUT" else limit  # P3: go big, unhedged
         if edge > edge_thr:
             # Option overpriced, sell
             for bid_price in sorted(od.buy_orders.keys(), reverse=True):
