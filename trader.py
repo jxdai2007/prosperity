@@ -461,16 +461,11 @@ class Trader:
         if underlying != "COCONUT":
             pass  # no cap needed with mean edge pricing
 
-            # IV scalping: track running mean of edge deviation
+            # IV scalping: track EMA of edge deviation (faster adaptation)
             ekey = f"opt_edge_{product}"
-            enkey = f"opt_edge_n_{product}"
-            en = saved.get(enkey, 0) + 1
-            saved[enkey] = en
-            if en == 1:
-                saved[ekey] = edge
-            else:
-                saved[ekey] = saved.get(ekey, edge) + (edge - saved.get(ekey, edge)) / en
-            mean_edge = saved[ekey]
+            prev_edge = saved.get(ekey, edge)
+            mean_edge = 0.01 * edge + 0.99 * prev_edge
+            saved[ekey] = mean_edge
             # Adjust fair to include the mean edge (structural mispricing)
             fair = fair + mean_edge
             edge = option_mid - fair
