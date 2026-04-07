@@ -464,7 +464,9 @@ class Trader:
             vol_smile_iv = 0.14876677 + 0.01007566 * m_t_k + 0.27362531 * m_t_k * m_t_k
             vol_smile_iv = max(0.05, min(1.0, vol_smile_iv))
             fair = bs_call_price(S, strike, T, vol_smile_iv)
-            edge_thr = 0.5  # much tighter - FrankfurtHedgehogs used THR_OPEN=0.5
+            # Dynamic edge threshold: widen for low-vega options (Frankfurt approach)
+            vega = bs_vega(S, strike, T, vol_smile_iv)
+            edge_thr = 0.5 if vega > 1.0 else 1.0
 
         if fair <= 0.5:
             return orders
