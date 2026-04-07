@@ -460,6 +460,22 @@ class Trader:
         limit = self.get_limit(product)
         if underlying != "COCONUT":
             limit = min(limit, 75)  # cap P3 options position
+
+            # IV scalping: track running mean of edge deviation
+            ekey = f"opt_edge_{product}"
+            enkey = f"opt_edge_n_{product}"
+            en = saved.get(enkey, 0) + 1
+            saved[enkey] = en
+            if en == 1:
+                saved[ekey] = edge
+            else:
+                saved[ekey] = saved.get(ekey, edge) + (edge - saved.get(ekey, edge)) / en
+            mean_edge = saved[ekey]
+            # Use deviation from mean edge for trading decisions
+            # Adjust fair to include the mean edge (structural mispricing)
+            fair = fair + mean_edge
+            edge = option_mid - fair
+
         pos = self.get_position(product, state)
         od = state.order_depths[product]
 
