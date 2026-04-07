@@ -345,7 +345,7 @@ class Trader:
             saved[pkey] = premium
         else:
             # Online mean update, capped denominator for stability
-            denom = min(n, 1000)
+            denom = min(n, 2000)
             saved[pkey] = saved.get(pkey, premium) + (premium - saved.get(pkey, premium)) / denom
         mean_prem = saved[pkey]
 
