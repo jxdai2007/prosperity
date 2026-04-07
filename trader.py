@@ -318,7 +318,7 @@ class Trader:
         cum_ofi = saved.get(ofik, 0) * 0.9 + ofi
         saved[ofik] = cum_ofi
 
-        fair = ema + cum_ofi * 0.005  # small OFI adjustment
+        fair = ema + cum_ofi * 0.02  # OFI adjustment
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
         spread = 1 if product == "KELP" else MM_DYNAMIC_SPREAD
