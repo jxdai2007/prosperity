@@ -636,7 +636,7 @@ class Trader:
 
         # Second level: wider spread to capture large moves (P3 only)
         if underlying != "COCONUT":
-            wide_spread = max(3, int(fair * 0.03))
+            wide_spread = max(2, int(fair * 0.02))
             wide_buy = int(round(fair - wide_spread + pos_skew))
             wide_sell = int(round(fair + wide_spread + pos_skew))
             wide_qty = min(limit - pos - buy_qty, max_mm_qty)
