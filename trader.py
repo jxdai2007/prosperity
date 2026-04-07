@@ -287,8 +287,8 @@ class Trader:
                     orders.append(Order(product, bid_price, -qty))
                     pos -= qty
 
-        # Inventory skew
-        skew = -pos * 0.3 / limit * spread if limit > 0 else 0
+        # Inventory skew (stronger to clear positions faster)
+        skew = -pos * 0.5 / limit * spread if limit > 0 else 0
         buy_price = int(round(fair - spread + skew))
         sell_price = int(round(fair + spread + skew))
 
