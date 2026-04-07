@@ -182,7 +182,7 @@ class Trader:
         elif product in ("KELP", "STARFRUIT"):
             archetype = "dynamic"
         elif product in ("SQUID_INK",):
-            archetype = "skip"  # too volatile, skip for now
+            archetype = "volatile"  # mean-reversion spike trading
         else:
             archetype = "skip"
 
@@ -302,6 +302,87 @@ class Trader:
             orders.append(Order(product, buy_price, buy_qty))
         if sell_qty > 0:
             orders.append(Order(product, sell_price, -sell_qty))
+
+        return orders
+
+    # ----------------------------------------------------------
+    # Strategy: Volatile Mean-Reversion (SQUID_INK)
+    # ----------------------------------------------------------
+    def mm_volatile(self, product: str, state: TradingState, saved: dict) -> list:
+        orders = []
+        if product not in state.order_depths:
+            return orders
+
+        od = state.order_depths[product]
+        mid = get_mid(od)
+        if mid == 0:
+            return orders
+
+        limit = self.get_limit(product)
+        pos = self.get_position(product, state)
+
+        # Track long-term mean (slow EMA, ~200 tick halflife)
+        mkey = f"vol_mean_{product}"
+        prev_mean = saved.get(mkey, mid)
+        mean = 0.005 * mid + 0.995 * prev_mean
+        saved[mkey] = mean
+
+        # Track volatility (MAD)
+        vkey = f"vol_std_{product}"
+        prev_std = saved.get(vkey, 10.0)
+        vol = 0.01 * abs(mid - mean) + 0.99 * prev_std
+        saved[vkey] = vol
+
+        # Need warmup for mean to stabilize
+        wkey = f"vol_warmup_{product}"
+        warmup = saved.get(wkey, 0)
+        saved[wkey] = warmup + 1
+        if warmup < 50:
+            return orders
+
+        deviation = mid - mean
+        threshold = max(vol * 1.5, 5.0)
+
+        # Mean reversion: trade against large deviations
+        if deviation > threshold:
+            # Price above mean, sell
+            for bid_price in sorted(od.buy_orders.keys(), reverse=True):
+                bid_vol = od.buy_orders[bid_price]
+                can_sell = limit + pos
+                qty = min(bid_vol, can_sell, 15)
+                if qty > 0:
+                    orders.append(Order(product, bid_price, -qty))
+                    pos -= qty
+        elif deviation < -threshold:
+            # Price below mean, buy
+            for ask_price in sorted(od.sell_orders.keys()):
+                ask_vol = -od.sell_orders[ask_price]
+                can_buy = limit - pos
+                qty = min(ask_vol, can_buy, 15)
+                if qty > 0:
+                    orders.append(Order(product, ask_price, qty))
+                    pos += qty
+
+        # Exit positions when deviation returns toward mean
+        if abs(deviation) < threshold * 0.3 and pos != 0:
+            if pos > 0:
+                for bid_price in sorted(od.buy_orders.keys(), reverse=True):
+                    bid_vol = od.buy_orders[bid_price]
+                    qty = min(bid_vol, pos, 10)
+                    if qty > 0:
+                        orders.append(Order(product, bid_price, -qty))
+                        pos -= qty
+                    if pos <= 0:
+                        break
+            elif pos < 0:
+                for ask_price in sorted(od.sell_orders.keys()):
+                    ask_vol = -od.sell_orders[ask_price]
+                    qty = min(ask_vol, -pos, 10)
+                    if qty > 0:
+                        orders.append(Order(product, ask_price, qty))
+                        pos += qty
+                    if pos >= 0:
+                        break
 
         return orders
 
@@ -745,6 +826,9 @@ class Trader:
                 elif archetype == "dynamic":
                     result[product] = self.mm_dynamic(product, state, saved)
 
+                elif archetype == "volatile":
+                    result[product] = self.mm_volatile(product, state, saved)
+
                 elif archetype == "basket":
                     basket_orders = self.basket_arb(product, state, saved)
                     for p, ords in basket_orders.items():
@@ -770,7 +854,7 @@ class Trader:
         for product, (direction, confidence) in insider_signals.items():
             if product in state.order_depths:
                 archetype = self.classify_product(product)
-                if archetype in ("dynamic", "component", "skip"):
+                if archetype in ("dynamic", "volatile", "component", "skip"):
                     try:
                         insider_orders = self.apply_insider(product, direction, confidence, state)
                         if insider_orders:
