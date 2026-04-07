@@ -266,7 +266,7 @@ class Trader:
         fair = ema
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
-        spread = 1 if product == "KELP" else MM_DYNAMIC_SPREAD
+        spread = MM_DYNAMIC_SPREAD
 
         # Take mispriced orders
         for ask_price in sorted(od.sell_orders.keys()):
