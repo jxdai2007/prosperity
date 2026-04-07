@@ -586,8 +586,29 @@ class Trader:
     # ----------------------------------------------------------
     # Insider Detection
     # ----------------------------------------------------------
+    # Known insiders from reference strategies
+    KNOWN_INSIDERS = {"Olivia", "Vladimir", "Remy", "Rhianna", "Rihanna", "Vinnie"}
+
     def detect_insider(self, state: TradingState, saved: dict) -> dict:
         signals = {}
+
+        # Fast path: check for known insider trades this tick
+        if state.market_trades:
+            for product, trades in state.market_trades.items():
+                if product not in state.order_depths:
+                    continue
+                for trade in trades:
+                    buyer = trade.buyer or ""
+                    seller = trade.seller or ""
+                    if buyer == "SUBMISSION" or seller == "SUBMISSION":
+                        continue
+                    # Known insiders: follow immediately
+                    if buyer in self.KNOWN_INSIDERS:
+                        if product not in signals or True:
+                            signals[product] = (1, 0.9)  # high confidence buy
+                    elif seller in self.KNOWN_INSIDERS:
+                        if product not in signals or True:
+                            signals[product] = (-1, 0.9)  # high confidence sell
         insider_data = saved.get("insider", {})
 
         # Score previous predictions
