@@ -280,14 +280,7 @@ class Trader:
         if mid == 0:
             return orders
 
-        # Order book imbalance for directional signal
-        total_bids = sum(od.buy_orders.values()) if od.buy_orders else 0
-        total_asks = -sum(od.sell_orders.values()) if od.sell_orders else 0
-        book_total = total_bids + total_asks
-        imbalance = (total_bids - total_asks) / book_total if book_total > 0 else 0
-        # imbalance > 0 = more buyers (price likely up)
-
-        # Update EMA with imbalance-adjusted mid
+        # Update EMA (KELP benefits from faster adaptation)
         alpha = MM_DYNAMIC_EMA_ALPHA
         key = f"ema_{product}"
         prev_ema = saved.get(key, mid)
@@ -295,8 +288,7 @@ class Trader:
         saved[key] = ema
         self.ema[product] = ema
 
-        # Adjust fair by order book imbalance (pressure indicator)
-        fair = ema + imbalance * 0.5
+        fair = ema
         limit = self.get_limit(product)
         pos = self.get_position(product, state)
         spread = 1 if product == "KELP" else MM_DYNAMIC_SPREAD
