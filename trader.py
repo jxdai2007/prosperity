@@ -356,7 +356,7 @@ class Trader:
         basket_pos = self.get_position(basket, state)
         basket_od = state.order_depths[basket]
         basket_orders = []
-        max_qty = 4  # between 3 and 5
+        max_qty = 3  # optimal with running mean
 
         if deviation > entry_thr:
             # Basket expensive -> sell basket aggressively
