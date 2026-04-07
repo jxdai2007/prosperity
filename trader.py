@@ -176,9 +176,7 @@ class Trader:
             return self.classified[product]
 
         archetype = "skip"  # default: don't trade unknown products
-        if product == "MAGNIFICENT_MACARONS":
-            archetype = "macarons"
-        elif product in FIXED_FAIR_VALUES:
+        if product in FIXED_FAIR_VALUES:
             archetype = "fixed"
         elif product in BASKET_COMPOSITIONS:
             archetype = "basket"
@@ -632,86 +630,6 @@ class Trader:
         return orders, conversions
 
     # ----------------------------------------------------------
-    # Strategy: MACARONS Taker Bot Exploitation (Frankfurt approach)
-    # ----------------------------------------------------------
-    def macarons_strategy(self, product: str, state: TradingState) -> tuple:
-        """Exploit hidden taker bot that fills at int(externalBid + 0.5).
-        Sell to taker bot, then convert (import) to flatten position."""
-        orders = []
-        conversions = 0
-
-        obs = state.observations
-        if obs is None or not hasattr(obs, 'conversionObservations') or obs.conversionObservations is None:
-            return orders, conversions
-        if product not in obs.conversionObservations:
-            return orders, conversions
-
-        conv = obs.conversionObservations[product]
-        ext_bid = conv.bidPrice
-        ext_ask = conv.askPrice
-        transport = conv.transportFees
-        import_tariff = conv.importTariff
-        export_tariff = conv.exportTariff
-
-        limit = self.get_limit(product)
-        pos = self.get_position(product, state)
-
-        # Taker bot price: where the hidden bot buys
-        taker_price = int(ext_bid + 0.5)
-
-        # Import cost (to flatten after selling)
-        import_cost = ext_ask + transport + import_tariff
-
-        # Only sell to taker bot if price exceeds import cost (profitable round-trip)
-        # Also try selling at prices above import cost from local orderbook
-        od = state.order_depths.get(product)
-        if od:
-            # Take any bids above import cost
-            for bid_price in sorted(od.buy_orders.keys(), reverse=True):
-                if bid_price > import_cost + 0.5:
-                    bid_vol = od.buy_orders[bid_price]
-                    can_sell = limit + pos
-                    qty = min(bid_vol, can_sell, 10)
-                    if qty > 0:
-                        orders.append(Order(product, bid_price, -qty))
-                        pos -= qty
-
-            # Place sell resting order at taker bot price (if profitable)
-            if taker_price > import_cost + 0.5:
-                can_sell = limit + pos
-                sell_qty = min(can_sell, 10)
-                if sell_qty > 0:
-                    orders.append(Order(product, taker_price, -sell_qty))
-
-            # Also try: place sell just above import cost to capture any buyer
-            sell_at = int(import_cost) + 2
-            if sell_at < taker_price:  # don't duplicate
-                can_sell = limit + pos
-                sell_qty_extra = min(can_sell, 10)
-                if sell_qty_extra > 0:
-                    orders.append(Order(product, sell_at, -sell_qty_extra))
-
-        # Export arb: buy locally if cheaper than export revenue
-        export_rev = ext_bid - transport - export_tariff
-        if od:
-            for ask_price in sorted(od.sell_orders.keys()):
-                if ask_price < export_rev - 0.5:
-                    ask_vol = -od.sell_orders[ask_price]
-                    can_buy = limit - pos
-                    qty = min(ask_vol, can_buy, 10)
-                    if qty > 0:
-                        orders.append(Order(product, ask_price, qty))
-                        pos += qty
-
-        # Convert to flatten position toward zero
-        if pos < 0:
-            conversions = min(-pos, 10)  # import to cover short
-        elif pos > 0:
-            conversions = -min(pos, 10)  # export excess
-
-        return orders, conversions
-
-    # ----------------------------------------------------------
     # Insider Detection
     # ----------------------------------------------------------
     # Known insiders: map to products they're reliable on
@@ -930,11 +848,6 @@ class Trader:
                     conv_orders, conv_count = self.conversion_arb(product, state)
                     result[product] = conv_orders
                     conversions += conv_count
-
-                elif archetype == "macarons":
-                    mac_orders, mac_conv = self.macarons_strategy(product, state)
-                    result[product] = mac_orders
-                    conversions += mac_conv
 
                 # component, underlying, skip -> do nothing
 
