@@ -325,7 +325,7 @@ class Trader:
         self.ema[product] = ema
 
         # OFI adjusts fair value slightly: positive flow → price going up
-        ofi_mult = 0.02 if product == "KELP" else 0.01
+        ofi_mult = 0.02  # both KELP and STARFRUIT benefit from stronger OFI
         ofi_adjustment = ofi_ema * ofi_mult
         fair = ema + ofi_adjustment
         limit = self.get_limit(product)
