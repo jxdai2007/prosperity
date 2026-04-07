@@ -435,7 +435,21 @@ class Trader:
                     orders.append(Order(product, bid_price, -qty))
                     pos -= qty
 
-        # Take-only: no resting MM orders (avoids conflicting with insider signals)
+        # Tight MM around fair with inventory skew
+        spread = 2
+        skew = -pos * 0.5 / limit * spread if limit > 0 else 0
+        buy_price = int(round(fair - spread + skew))
+        sell_price = int(round(fair + spread + skew))
+        if buy_price >= sell_price:
+            buy_price = int(fair) - 1
+            sell_price = int(fair) + 1
+
+        buy_qty = limit - pos
+        sell_qty = limit + pos
+        if buy_qty > 0:
+            orders.append(Order(product, buy_price, buy_qty))
+        if sell_qty > 0:
+            orders.append(Order(product, sell_price, -sell_qty))
 
         return orders
 
