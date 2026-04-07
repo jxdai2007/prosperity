@@ -479,11 +479,6 @@ class Trader:
         pos = self.get_position(product, state)
         od = state.order_depths[product]
 
-        # Widen edge threshold based on position exposure (reduce accumulation risk)
-        if underlying != "COCONUT":
-            pos_exposure = abs(pos) / limit if limit > 0 else 0
-            edge_thr = edge_thr + pos_exposure * 1.0  # wider threshold as position grows
-
         # Take mispriced orders aggressively
         max_take = 20 if underlying == "COCONUT" else limit  # P3: go big, unhedged
         if edge > edge_thr:
