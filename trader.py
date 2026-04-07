@@ -521,27 +521,14 @@ class Trader:
 
         # Market making around fair value
         if underlying == "COCONUT":
-            # Track mean edge for COCONUT MM centering
-            cekey = f"coco_edge_{product}"
-            cenkey = f"coco_edge_n_{product}"
-            coco_edge = option_mid - fair
-            cen = saved.get(cenkey, 0) + 1
-            saved[cenkey] = cen
-            if cen == 1:
-                saved[cekey] = coco_edge
-            else:
-                saved[cekey] = saved.get(cekey, coco_edge) + (coco_edge - saved.get(cekey, coco_edge)) / cen
-            mm_fair = fair + saved[cekey]  # center MM on market consensus
-            spread = max(3, int(mm_fair * 0.01))
+            spread = max(3, int(fair * 0.01))
             max_mm_qty = 15
         else:
             # P3 options: MM with mean-edge-adjusted fair (accurate pricing)
-            mm_fair = fair  # already adjusted by mean edge
             spread = max(1, int(fair * 0.01))
             max_mm_qty = 25
-        mm_price = mm_fair
-        buy_price = int(round(mm_price - spread))
-        sell_price = int(round(mm_price + spread))
+        buy_price = int(round(fair - spread))
+        sell_price = int(round(fair + spread))
         buy_qty = min(limit - pos, max_mm_qty)
         sell_qty = min(limit + pos, max_mm_qty)
         if buy_qty > 0 and buy_price > 0:
